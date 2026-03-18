@@ -1,0 +1,184 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/models/user_profile_model.dart';
+import '../../providers/user_profile_provider.dart';
+import '../../providers/auth_provider.dart';
+
+class CompleteProfileScreen extends ConsumerStatefulWidget {
+  const CompleteProfileScreen({super.key});
+
+  @override
+  ConsumerState<CompleteProfileScreen> createState() =>
+      _CompleteProfileScreenState();
+}
+
+class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _nombreCompletoController = TextEditingController();
+  final _mejorMarcaController = TextEditingController();
+  final _competenciaController = TextEditingController();
+  final _categoriaController = TextEditingController();
+  final _perfilController = TextEditingController();
+  final _coachIdController = TextEditingController();
+
+  DateTime _fechaNacimiento =
+      DateTime.now().subtract(const Duration(days: 365 * 20));
+  DateTime _fechaMejorMarca = DateTime.now();
+  String _sexo = 'Masculino';
+  String _rol = 'atleta';
+
+  final List<String> _sexoOptions = ['Masculino', 'Femenino', 'Otro'];
+  final List<String> _rolOptions = ['atleta', 'entrenador'];
+
+  @override
+  void dispose() {
+    _nombreCompletoController.dispose();
+    _mejorMarcaController.dispose();
+    _competenciaController.dispose();
+    _categoriaController.dispose();
+    _perfilController.dispose();
+    _coachIdController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context, bool isNacimiento) async {
+    final initialDate = isNacimiento ? _fechaNacimiento : _fechaMejorMarca;
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isNacimiento) {
+          _fechaNacimiento = picked;
+        } else {
+          _fechaMejorMarca = picked;
+        }
+      });
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return;
+
+    final profile = UserProfileModel(
+      uid: user.uid,
+      nombreCompleto: _nombreCompletoController.text,
+      fechaNacimiento: _fechaNacimiento,
+      sexo: _sexo,
+      perfilDeportivo: _perfilController.text,
+      mejorMarca: _mejorMarcaController.text,
+      fechaMejorMarca: _fechaMejorMarca,
+      competenciaObjetivo: _competenciaController.text,
+      categoria: _categoriaController.text,
+      rol: _rol,
+      coachId: _rol == 'atleta' ? _coachIdController.text : '',
+    );
+
+    await ref.read(userProfileProvider.notifier).saveAndSyncProfile(profile);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Completa tu Perfil')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nombreCompletoController,
+                decoration: const InputDecoration(labelText: 'Nombre Completo'),
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _rol,
+                decoration: const InputDecoration(labelText: 'Rol'),
+                items: _rolOptions
+                    .map((r) => DropdownMenuItem(
+                        value: r, child: Text(r.toUpperCase())))
+                    .toList(),
+                onChanged: (val) => setState(() => _rol = val!),
+              ),
+              const SizedBox(height: 16),
+              if (_rol == 'atleta') ...[
+                TextFormField(
+                  controller: _coachIdController,
+                  decoration: const InputDecoration(
+                      labelText: 'ID del Entrenador (Opcional)'),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Fecha de Nacimiento'),
+                subtitle: Text('${_fechaNacimiento.toLocal()}'.split(' ')[0]),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () => _selectDate(context, true),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _sexo,
+                decoration: const InputDecoration(labelText: 'Sexo'),
+                items: _sexoOptions
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (val) => setState(() => _sexo = val!),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _perfilController,
+                decoration: const InputDecoration(
+                    labelText:
+                        'Perfil Deportivo (Ej: Saltos, Lanzamientos, Velocidad)'),
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _mejorMarcaController,
+                decoration: const InputDecoration(
+                    labelText: 'Mejor Marca (e.g. 500kg Total)'),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Fecha de Mejor Marca'),
+                subtitle: Text('${_fechaMejorMarca.toLocal()}'.split(' ')[0]),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () => _selectDate(context, false),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _competenciaController,
+                decoration:
+                    const InputDecoration(labelText: 'Competencia Objetivo'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _categoriaController,
+                decoration: const InputDecoration(
+                    labelText: 'Categoría (Ej: Sub-20, Senior, Master)'),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _submitForm,
+                child: const Text('Guardar Perfil'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

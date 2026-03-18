@@ -1,0 +1,6 @@
+[info] Don't invoke 'print' in production code (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\data\repositories\training_repository.dart:13:7)
+[info] Don't invoke 'print' in production code (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\data\repositories\training_repository.dart:23:7)
+[info] Don't invoke 'print' in production code (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\providers\training_provider.dart:42:8)
+[info] Use 'const' with the constructor to improve performance (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\ui\screens\historial_screen.dart:46:25)
+[info] Use 'const' with the constructor to improve performance (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\ui\screens\registro_screen.dart:44:7)
+[info] Use 'const' with the constructor to improve performance (C:\Users\maxxi\OneDrive\Escritorio\DE\Ejercicios\4. Canalizacion datos de entrenamiento\lib\ui\screens\registro_screen.dart:44:25)
