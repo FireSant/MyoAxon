@@ -6,6 +6,37 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
 ---
+## v0.0.9 - 2026-03-18 🏀 Athlete-First Drawer & Profile Editing
+
+### Funcionalidades
+* **Drawer "Athlete-First"**: Nuevo menú lateral con diseño tipo "ID Card" deportiva
+  - Header con avatar (iniciales), nombre y rol en misma línea
+  - Badges de perfil deportivo y categoría
+  - Gradiente azul con estilo profesional
+* **Navegación del Drawer**:
+  - "Mi Perfil" → `ProfileScreen` con edición campo por campo
+  - "Sincronización" → Estado en tiempo real + botón forzar sync
+  - "Cerrar Sesión" al final del drawer (separado con spacer)
+* **ProfileScreen**: Edición individual de cada campo del perfil
+  - TextFields para campos de texto
+  - DatePicker para fechas
+  - SimpleDialog para opciones (Sexo, Perfil Deportivo)
+  - Guardado automático con `saveAndSyncProfile()`
+* **Sincronización reactiva**:
+  - `sessionListProvider` muestra cantidad de sesiones pendientes en tiempo real
+  - Diálogo de sincronización con estado detallado
+  - `syncPending()` para forzar subida a Firebase
+
+### Correcciones y mejoras
+* ✅ **Layout Drawer**: Corregido `mainAxisSize: MainAxisSize.min` en Row de chips para evitar unbounded constraints
+* ✅ **Botón logout**: Eliminado duplicado del AppBar, ahora solo en drawer
+
+### Problemas conocidos
+* **Drawer crashea**: Persisten crashes de layout al abrir el drawer (investigando)
+
+
+---
+
 ## v0.0.8 - 2026-03-18 🚀 MyoAxon Rebranding & Sync
 ### Funcionalidades
 * **Reactivación de Autenticación**: Restaurado el flujo completo de `AuthGate` y `LoginScreen` (superando el modo de inicio rápido de v0.0.7).
@@ -27,6 +58,10 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 * ✅ **Aislamiento Estricto**: Corregido bug donde sesiones de otros usuarios podían aparecer en el Dashboard.
 * ✅ **Estabilidad de Hive**: Regeneración de adaptadores tras cambios en los modelos.
 * ✅ **Código Limpio**: Reducción de deuda técnica eliminando 4 archivos huérfanos.
+
+### Problemas conocidos
+* **Drawer crashea al abrir**: El menú lateral (drawer) tiene problemas de layout (unbounded constraints) que causan crash al abrir. Se está trabajando en la corrección.
+* **Versión web sin configurar**: La app no funciona en navegador porque falta configuración de Firebase para web (firebase_options.dart requiere valores reales).
 
 ---
 

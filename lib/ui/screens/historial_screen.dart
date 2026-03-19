@@ -7,6 +7,7 @@ import '../../data/models/gym_exercise_model.dart';
 import '../../data/models/tech_exercise_model.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../data/models/user_profile_model.dart';
+import 'nuevo_registro_screen.dart';
 
 class HistorialScreen extends ConsumerWidget {
   const HistorialScreen({super.key});
@@ -119,7 +120,9 @@ class _AthleteHistoryView extends ConsumerWidget {
       );
     } else {
       return Scaffold(
-        appBar: AppBar(title: const Text('Historial de Entrenamiento')),
+        appBar: AppBar(
+          title: const Text('Historial de Entrenamiento'),
+        ),
         body: body,
       );
     }
@@ -241,9 +244,22 @@ class _ShiftSessionCard extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
             ),
-            title: Text(
-              '$jornada - ${session.tipoSesion}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '$jornada - ${session.tipoSesion}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                // Icono de sincronización
+                if (session.isSynced)
+                  const Icon(
+                    Icons.cloud_done,
+                    size: 20,
+                    color: Colors.green,
+                  ),
+              ],
             ),
             subtitle: Text(
               'RPE: ${session.intensidadPercibida}/10 | Fatiga: ${session.fatiguaPreentrenamiento}/5',
@@ -251,6 +267,17 @@ class _ShiftSessionCard extends StatelessWidget {
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.secondary,
               ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => NuevoRegistroScreen(editingSession: session),
+                  ),
+                );
+              },
             ),
             children: [
               ...session.ejerciciosGim.map((ej) => _buildGymExerciseItem(ej)),

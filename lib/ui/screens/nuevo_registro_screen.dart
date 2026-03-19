@@ -93,7 +93,9 @@ class _TechCardData {
 // --------------- Main Screen ---------------
 
 class NuevoRegistroScreen extends ConsumerStatefulWidget {
-  const NuevoRegistroScreen({super.key});
+  final SessionModel? editingSession;
+
+  const NuevoRegistroScreen({super.key, this.editingSession});
 
   @override
   ConsumerState<NuevoRegistroScreen> createState() =>
@@ -118,6 +120,14 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
   final List<_TechCardData> _techCards = [];
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.editingSession != null) {
+      _loadSessionData(widget.editingSession!);
+    }
+  }
+
+  @override
   void dispose() {
     _faseCtrl.dispose();
     _suenoCtrl.dispose();
@@ -131,16 +141,50 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
     super.dispose();
   }
 
+  void _loadSessionData(SessionModel session) {
+    _tipoSesion = session.tipoSesion;
+    _jornada = session.jornada;
+    _fecha = session.fecha;
+    _faseCtrl.text = session.faseEntrenamiento;
+    _suenoCtrl.text = session.horasSueno.toString();
+    _limitantesCtrl.text = session.limitantes;
+    _fatiga = session.fatiguaPreentrenamiento.toDouble();
+    _intensidad = session.intensidadPercibida.toDouble();
+
+    // Cargar ejercicios
+    for (final ej in session.ejerciciosGim) {
+      final card = _GymCardData();
+      card.name.text = ej.nombreEjercicio;
+      card.series.text = ej.series.toString();
+      card.reps.text = ej.repeticiones.toString();
+      card.weight.text = ej.pesoKg.toString();
+      card.rir.text = ej.rir.toString();
+      card.rest.text = ej.descansoSegundos.toString();
+      _gymCards.add(card);
+    }
+
+    for (final ej in session.ejerciciosTech) {
+      final card = _TechCardData();
+      card.name.text = ej.nombreEjercicio;
+      card.series.text = ej.series.toString();
+      card.reps.text = ej.repeticiones.toString();
+      card.metric.text = ej.metricaPrincipal.toString();
+      card.rest.text = ej.descansoSegundos.toString();
+      _techCards.add(card);
+    }
+  }
+
   // ─── Build ───────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final savingState = ref.watch(nuevoRegistroProvider);
     final isSaving = savingState.isLoading;
+    final isEditing = widget.editingSession != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nueva Sesión'),
+        title: Text(isEditing ? 'Editar Sesión' : 'Nueva Sesión'),
         centerTitle: false,
       ),
       body: Form(
@@ -410,6 +454,7 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
   // ─── Section 3: Save button ──────────────────────────────
 
   Widget _buildSaveButton(bool isSaving) {
+    final isEditing = widget.editingSession != null;
     return FilledButton.icon(
       onPressed: isSaving ? null : _handleSave,
       icon: isSaving
@@ -420,7 +465,7 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
                   strokeWidth: 2, color: Colors.white),
             )
           : const Icon(Icons.save_outlined),
-      label: Text(isSaving ? 'Guardando...' : 'GUARDAR SESIÓN'),
+      label: Text(isSaving ? 'Guardando...' : (isEditing ? 'ACTUALIZAR SESIÓN' : 'GUARDAR SESIÓN')),
       style: FilledButton.styleFrom(
         minimumSize: const Size(double.infinity, 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -449,9 +494,10 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
 
     final user = ref.read(authStateProvider).value;
     final userId = user?.uid ?? 'single_user';
+    final isEditing = widget.editingSession != null;
 
     final session = SessionModel(
-      idSesion: const Uuid().v4(),
+      idSesion: isEditing ? widget.editingSession!.idSesion : const Uuid().v4(),
       userId: userId,
       idAtleta: userId,
       fecha: _fecha,
@@ -471,12 +517,19 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
         (i) => _techCards[i].toModel(i),
       ),
       isSynced: false,
+      editadoEn: isEditing ? DateTime.now() : null,
     );
 
     // Guardar el ScaffoldMessengerState antes de la operación asincrónica
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    await ref.read(nuevoRegistroProvider.notifier).guardar(session, ref);
+    if (isEditing) {
+      // Actualizar sesión existente
+      await ref.read(sessionListProvider.notifier).updateSession(session);
+    } else {
+      // Crear nueva sesión
+      await ref.read(nuevoRegistroProvider.notifier).guardar(session, ref);
+    }
 
     if (!mounted) return;
 
@@ -490,35 +543,16 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
       );
     } else {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('✅ Sesión guardada correctamente'),
+        SnackBar(
+          content: Text(isEditing
+              ? '✅ Sesión actualizada correctamente'
+              : '✅ Sesión guardada correctamente'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
-      _resetForm();
+      Navigator.pop(context); // Cerrar pantalla después de guardar
     }
-  }
-
-  void _resetForm() {
-    setState(() {
-      _tipoSesion = 'Gimnasio';
-      _jornada = 'Matutina';
-      _fecha = DateTime.now();
-      _faseCtrl.clear();
-      _suenoCtrl.text = '8';
-      _limitantesCtrl.clear();
-      _fatiga = 3;
-      _intensidad = 5;
-      for (final c in _gymCards) {
-        c.dispose();
-      }
-      _gymCards.clear();
-      for (final c in _techCards) {
-        c.dispose();
-      }
-      _techCards.clear();
-    });
   }
 
   // ─── Util ────────────────────────────────────────────────

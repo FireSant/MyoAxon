@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/user_profile_model.dart';
 import '../data/repositories/user_profile_repository.dart';
@@ -64,6 +65,10 @@ final userProfileProvider =
         // Retry syncing any sessions that were saved offline
         Future.microtask(
             () => ref.read(sessionListProvider.notifier).syncPending());
+        // Download sessions from Firebase (Sync Down)
+        debugPrint('👤 [UserProfileProvider] Usuario logueado, iniciando pullFromFirebase');
+        Future.microtask(
+            () => ref.read(sessionListProvider.notifier).pullFromFirebase());
       } else {
         notifier.clearProfile();
       }

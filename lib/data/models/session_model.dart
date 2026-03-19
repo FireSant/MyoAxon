@@ -48,6 +48,9 @@ class SessionModel extends HiveObject {
   @HiveField(13, defaultValue: 'Matutina')
   String jornada; // 'Matutina' o 'Vespertina'
 
+  @HiveField(14)
+  DateTime? editadoEn;
+
   SessionModel({
     required this.idSesion,
     this.userId = '', // Opcional para compatibilidad
@@ -63,6 +66,7 @@ class SessionModel extends HiveObject {
     List<TechExerciseModel>? ejerciciosTech,
     this.isSynced = false,
     this.jornada = 'Matutina',
+    this.editadoEn,
   })  : ejerciciosGim = ejerciciosGim ?? [],
         ejerciciosTech = ejerciciosTech ?? [];
 
@@ -80,6 +84,7 @@ class SessionModel extends HiveObject {
       'intensidad_percibida': intensidadPercibida,
       'limitantes': limitantes,
       'jornada': jornada,
+      'editado_en': editadoEn?.toIso8601String(),
       'ejercicios_gym': ejerciciosGim.map((e) => e.toFirebase()).toList(),
       'ejercicios_tech': ejerciciosTech.map((e) => e.toFirebase()).toList(),
     };
@@ -100,6 +105,9 @@ class SessionModel extends HiveObject {
       limitantes: data['limitantes'] ?? '',
       jornada: data['jornada'] ?? 'Matutina',
       isSynced: true,
+      editadoEn: data['editado_en'] != null
+          ? DateTime.parse(data['editado_en'])
+          : null,
       // --- AGREGAR ESTO PARA RECUPERAR LOS EJERCICIOS ---
       ejerciciosGim: (data['ejercicios_gym'] as List?)
           ?.map((e) =>

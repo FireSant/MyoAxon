@@ -59,6 +59,33 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Icon(Icons.construction, size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text(
+                      'Próximamente',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Esta sección está en desarrollo y estará disponible próximamente.',
+                      style: TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             )
           ],
         ),

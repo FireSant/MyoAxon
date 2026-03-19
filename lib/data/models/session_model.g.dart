@@ -31,13 +31,14 @@ class SessionModelAdapter extends TypeAdapter<SessionModel> {
       ejerciciosTech: (fields[11] as List?)?.cast<TechExerciseModel>(),
       isSynced: fields[12] as bool,
       jornada: fields[13] == null ? 'Matutina' : fields[13] as String,
+      editadoEn: fields[14] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SessionModel obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.idSesion)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class SessionModelAdapter extends TypeAdapter<SessionModel> {
       ..writeByte(12)
       ..write(obj.isSynced)
       ..writeByte(13)
-      ..write(obj.jornada);
+      ..write(obj.jornada)
+      ..writeByte(14)
+      ..write(obj.editadoEn);
   }
 
   @override

@@ -56,6 +56,36 @@ class UserProfileModel extends HiveObject {
     this.isSynced = false,
   });
 
+  UserProfileModel copyWith({
+    String? uid,
+    String? nombreCompleto,
+    DateTime? fechaNacimiento,
+    String? sexo,
+    String? perfilDeportivo,
+    String? mejorMarca,
+    DateTime? fechaMejorMarca,
+    String? competenciaObjetivo,
+    String? categoria,
+    String? rol,
+    String? coachId,
+    bool? isSynced,
+  }) {
+    return UserProfileModel(
+      uid: uid ?? this.uid,
+      nombreCompleto: nombreCompleto ?? this.nombreCompleto,
+      fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
+      sexo: sexo ?? this.sexo,
+      perfilDeportivo: perfilDeportivo ?? this.perfilDeportivo,
+      mejorMarca: mejorMarca ?? this.mejorMarca,
+      fechaMejorMarca: fechaMejorMarca ?? this.fechaMejorMarca,
+      competenciaObjetivo: competenciaObjetivo ?? this.competenciaObjetivo,
+      categoria: categoria ?? this.categoria,
+      rol: rol ?? this.rol,
+      coachId: coachId ?? this.coachId,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
+
   // Para Firebase: Serializa
   Map<String, dynamic> toFirebase() {
     return {

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/session_model.dart';
 
@@ -6,6 +7,9 @@ class SessionRepository {
   static const String _boxName = 'sessions_box';
 
   Box<SessionModel> get _box => Hive.box<SessionModel>(_boxName);
+
+  /// Stream para escuchar cambios en la caja Hive
+  Stream<BoxEvent> get boxWatch => _box.watch();
 
   // Save a new session to local database
   Future<void> saveSession(SessionModel session) async {
@@ -81,6 +85,50 @@ class SessionRepository {
     final pending = getUnsyncedSessionsForUser(userId);
     for (final session in pending) {
       await syncSessionToFirebase(session);
+    }
+  }
+
+  /// Downloads all sessions from Firebase for the given user and saves them locally.
+  /// Sets isSynced = true for all downloaded sessions.
+  Future<void> downloadSessionsFromFirebase(String userId) async {
+    try {
+      debugPrint('📥 [SessionRepository] Iniciando descarga de sesiones para userId: $userId');
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('sessions')
+          .where('user_id', isEqualTo: userId)
+          .get();
+
+      debugPrint('📥 [SessionRepository] Documentos encontrados en Firebase: ${querySnapshot.docs.length}');
+
+      final Map<String, SessionModel> sessionsMap = {};
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        // Add userId to data if not present (defensive)
+        data['user_id'] = userId;
+        final firebaseSession = SessionModel.fromFirebase(data, userId);
+        
+        // Si la sesión ya existe localmente, preservar su isSynced local
+        final existingSession = _box.get(firebaseSession.idSesion);
+        if (existingSession != null) {
+          firebaseSession.isSynced = existingSession.isSynced;
+        }
+        sessionsMap[firebaseSession.idSesion] = firebaseSession;
+      }
+
+      debugPrint('📥 [SessionRepository] Sesiones convertidas: ${sessionsMap.length}');
+
+      // Save all downloaded sessions to Hive (putAll is atomic)
+      if (sessionsMap.isNotEmpty) {
+        await _box.putAll(sessionsMap);
+        debugPrint('📥 [SessionRepository] ✅ Sesiones guardadas en Hive local');
+      } else {
+        debugPrint('📥 [SessionRepository] ⚠️ No hay sesiones nuevas para guardar');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('📥 [SessionRepository] ❌ Error descargando sesiones: $e');
+      debugPrint('📥 [SessionRepository] StackTrace: $stackTrace');
+      rethrow;
     }
   }
 }
