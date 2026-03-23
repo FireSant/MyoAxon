@@ -193,16 +193,20 @@ class AthleteDrawer extends ConsumerWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildInfoChip(
-                    Icons.sports,
-                    profile.perfilDeportivo.isNotEmpty
-                        ? profile.perfilDeportivo
-                        : 'Sin perfil',
+                  Flexible(
+                    child: _buildInfoChip(
+                      Icons.sports,
+                      profile.perfilDeportivo.isNotEmpty
+                          ? profile.perfilDeportivo
+                          : 'Sin perfil',
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  _buildInfoChip(
-                    Icons.category,
-                    profile.categoria.isNotEmpty ? profile.categoria : 'Sin categoría',
+                  Flexible(
+                    child: _buildInfoChip(
+                      Icons.category,
+                      profile.categoria.isNotEmpty ? profile.categoria : 'Sin categoría',
+                    ),
                   ),
                 ],
               ),
