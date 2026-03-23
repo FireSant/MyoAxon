@@ -6,6 +6,14 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
 ---
+## v0.0.9+1 - 2026-03-23 🐛 Hotfix: Drawer Crash
+
+### Correcciones y mejoras
+* ✅ **Estabilidad Drawer**: Solucionado definitivamente el crash al abrir el menú lateral.
+  - **Causa**: Conflicto de layout (`RenderFlex children have non-zero flex but incoming width constraints are unbounded`) al usar `Flexible` dentro de un `Row` anidado.
+  - **Solución**: Se envolvieron los widgets de información (chips de deporte/categoría) en `Flexible` dentro del `Row` padre en `AthleteDrawer`.
+
+---
 ## v0.0.9 - 2026-03-18 🏀 Athlete-First Drawer & Profile Editing
 
 ### Funcionalidades
@@ -203,6 +211,6 @@ Para volver a habilitar el sistema de login completo:
 
 ---
 
-**Última actualización**: 2026-03-18  
-**Versión actual**: v0.0.8 (MyoAxon Rebranding & Sync)  
+**Última actualización**: 2026-03-23  
+**Versión actual**: v0.0.9+1 (Hotfix Drawer)  
 **Estado**: Estable & Sincronizado (Autenticación Obligatoria)
