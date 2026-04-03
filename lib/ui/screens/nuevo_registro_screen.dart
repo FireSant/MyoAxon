@@ -212,7 +212,6 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
 
   Widget _buildMetadataCard() {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -327,7 +326,7 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
               min: 1,
               max: 10,
               divisions: 9,
-              colorSchemeColor: Theme.of(context).colorScheme.primary,
+              colorSchemeColor: Theme.of(context).colorScheme.secondary,
               onChanged: (v) => setState(() => _intensidad = v),
             ),
             const SizedBox(height: 14),
@@ -465,7 +464,9 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
                   strokeWidth: 2, color: Colors.white),
             )
           : const Icon(Icons.save_outlined),
-      label: Text(isSaving ? 'Guardando...' : (isEditing ? 'ACTUALIZAR SESIÓN' : 'GUARDAR SESIÓN')),
+      label: Text(isSaving
+          ? 'Guardando...'
+          : (isEditing ? 'ACTUALIZAR SESIÓN' : 'GUARDAR SESIÓN')),
       style: FilledButton.styleFrom(
         minimumSize: const Size(double.infinity, 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -478,6 +479,9 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
 
   Future<void> _handleSave() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Cerrar teclado antes de guardar para evitar glitches visuales
+    FocusScope.of(context).unfocus();
 
     // Validar que haya al menos un ejercicio
     if (_gymCards.isEmpty && _techCards.isEmpty) {
@@ -521,6 +525,8 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
     );
 
     // Guardar el ScaffoldMessengerState antes de la operación asincrónica
+    // Guardar referencias antes de la operación asincrónica para evitar errores de contexto
+    final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     if (isEditing) {
@@ -551,8 +557,26 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
           duration: const Duration(seconds: 2),
         ),
       );
-      Navigator.pop(context); // Cerrar pantalla después de guardar
+
+      if (isEditing) {
+        navigator
+            .pop(); // Solo cerramos si estamos en modo edición (pushed route)
+      } else {
+        // Si es un registro nuevo, podrías limpiar el formulario o simplemente dejarlo así.
+        // Por ahora, lo dejamos así para que el usuario vea el éxito.
+        _limpiarFormulario();
+      }
     }
+  }
+
+  void _limpiarFormulario() {
+    setState(() {
+      _faseCtrl.clear();
+      _gymCards.clear();
+      _techCards.clear();
+      _fatiga = 3;
+      _intensidad = 5;
+    });
   }
 
   // ─── Util ────────────────────────────────────────────────
@@ -561,7 +585,6 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

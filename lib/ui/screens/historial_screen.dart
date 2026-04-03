@@ -290,13 +290,14 @@ class _ShiftSessionCard extends StatelessWidget {
   }
 
   Color _getJornadaColor(String jornada, BuildContext context) {
+    final theme = Theme.of(context);
     switch (jornada) {
       case 'Matutina':
-        return Colors.orange.shade300;
+        return theme.colorScheme.tertiary;
       case 'Vespertina':
-        return Colors.indigo.shade300;
+        return theme.colorScheme.secondary;
       default:
-        return Theme.of(context).colorScheme.primary;
+        return theme.colorScheme.primary;
     }
   }
 

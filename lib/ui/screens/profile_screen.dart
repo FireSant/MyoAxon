@@ -49,7 +49,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               _buildEditableField(
                 context,
-                'Perfil Deportivo',
+                'Disciplina/Prueba',
                 profile.perfilDeportivo,
                 () => _editPerfilDeportivoField(context, profile),
               ),
@@ -97,9 +97,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     bool isDate = false,
   }) {
     return ListTile(
-      title: Text(label),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
       subtitle: Text(value.isEmpty ? 'No definido' : value),
-      trailing: const Icon(Icons.edit, size: 20),
+      trailing: Icon(Icons.edit,
+        size: 20,
+        color: Theme.of(context).colorScheme.primary),
       onTap: onTap,
     );
   }
@@ -122,7 +130,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'Ingresa el nuevo valor',
           ),
         ),
@@ -158,7 +166,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (picked != null) {
-      await _updateProfileField(fieldName, picked.toIso8601String(), profile);
+      await _updateProfileField(fieldName, picked, profile);
     }
   }
 
@@ -196,37 +204,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     BuildContext context,
     UserProfileModel profile,
   ) async {
-    final selected = await showDialog<String>(
+    final controller = TextEditingController(text: profile.perfilDeportivo.isEmpty ? '' : profile.perfilDeportivo);
+    final result = await showDialog<String>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Seleccionar Perfil Deportivo'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'Powerlifting'),
-            child: const Text('Powerlifting'),
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Disciplina/Prueba'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Ingresa tu disciplina o prueba',
           ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'Halterofilia'),
-            child: const Text('Halterofilia'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
           ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'Culturismo'),
-            child: const Text('Culturismo'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'CrossFit'),
-            child: const Text('CrossFit'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'Atletismo'),
-            child: const Text('Atletismo'),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Guardar'),
           ),
         ],
       ),
     );
 
-    if (selected != null && selected != profile.perfilDeportivo) {
-      await _updateProfileField('perfilDeportivo', selected, profile);
+    if (result != null && result != profile.perfilDeportivo) {
+      await _updateProfileField('perfilDeportivo', result, profile);
     }
   }
 
@@ -288,7 +292,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'sexo':
         return 'Sexo';
       case 'perfilDeportivo':
-        return 'Perfil Deportivo';
+        return 'Disciplina/Prueba';
       case 'mejorMarca':
         return 'Mejor Marca';
       case 'fechaMejorMarca':

@@ -29,9 +29,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             Expanded(
               child: Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                // Ahora usa el CardTheme definido en app_theme.dart
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: VolumeLineChart(records: records),
@@ -40,9 +38,6 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -62,25 +57,27 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Icon(Icons.construction, size: 48, color: Colors.grey),
-                    SizedBox(height: 12),
+                    Icon(Icons.construction,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.secondary),
+                    const SizedBox(height: 12),
                     Text(
                       'Próximamente',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                      style: Theme.of(context)
+                          .textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Esta sección está en desarrollo y estará disponible próximamente.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],

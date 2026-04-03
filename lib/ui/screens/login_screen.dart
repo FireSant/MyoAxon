@@ -87,8 +87,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.fitness_center,
-                    size: 80, color: Colors.deepPurpleAccent),
+                Icon(Icons.fitness_center,
+                    size: 80, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 16),
                 Text(
                   _isRegisterMode ? 'Crear Cuenta' : 'Iniciar Sesión',
@@ -163,23 +163,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Submit button
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
+                  height: 52,
+                  child: FilledButton(
                     onPressed: _isLoading ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurpleAccent,
-                      foregroundColor: Colors.white,
-                    ),
                     child: _isLoading
                         ? const SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                                color: Colors.white, strokeWidth: 2.5),
                           )
                         : Text(
                             _isRegisterMode ? 'Registrarse' : 'Entrar',
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),

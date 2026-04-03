@@ -92,91 +92,136 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nombreCompletoController,
-                decoration: const InputDecoration(labelText: 'Nombre Completo'),
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Requerido' : null,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _nombreCompletoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre Completo',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    validator: (val) =>
+                        val == null || val.isEmpty ? 'Requerido' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _rol,
+                    decoration: const InputDecoration(
+                      labelText: 'Rol',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                    items: _rolOptions
+                        .map((r) => DropdownMenuItem(
+                            value: r, child: Text(r.toUpperCase())))
+                        .toList(),
+                    onChanged: (val) => setState(() => _rol = val!),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_rol == 'atleta') ...[
+                    TextFormField(
+                      controller: _coachIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'ID del Entrenador (Opcional)',
+                        prefixIcon: Icon(Icons.sports),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildDateSelector(
+                    'Fecha de Nacimiento',
+                    _fechaNacimiento,
+                    () => _selectDate(context, true),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _sexo,
+                    decoration: const InputDecoration(
+                      labelText: 'Sexo',
+                      prefixIcon: Icon(Icons.wc),
+                    ),
+                    items: _sexoOptions
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (val) => setState(() => _sexo = val!),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _perfilController,
+                    decoration: const InputDecoration(
+                      labelText: 'Perfil (Ej: Saltos, Velocidad)',
+                      prefixIcon: Icon(Icons.directions_run),
+                    ),
+                    validator: (val) =>
+                        val == null || val.isEmpty ? 'Requerido' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _mejorMarcaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Mejor Marca (e.g. 500kg Total)',
+                      prefixIcon: Icon(Icons.emoji_events_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDateSelector(
+                    'Fecha de Mejor Marca',
+                    _fechaMejorMarca,
+                    () => _selectDate(context, false),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _competenciaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Competencia Objetivo',
+                      prefixIcon: Icon(Icons.flag_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _categoriaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoría (Ej: Sub-20, Senior)',
+                      prefixIcon: Icon(Icons.label_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  FilledButton(
+                    onPressed: _submitForm,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'GUARDAR PERFIL',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  )
+                ],
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _rol,
-                decoration: const InputDecoration(labelText: 'Rol'),
-                items: _rolOptions
-                    .map((r) => DropdownMenuItem(
-                        value: r, child: Text(r.toUpperCase())))
-                    .toList(),
-                onChanged: (val) => setState(() => _rol = val!),
-              ),
-              const SizedBox(height: 16),
-              if (_rol == 'atleta') ...[
-                TextFormField(
-                  controller: _coachIdController,
-                  decoration: const InputDecoration(
-                      labelText: 'ID del Entrenador (Opcional)'),
-                ),
-                const SizedBox(height: 16),
-              ],
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Fecha de Nacimiento'),
-                subtitle: Text('${_fechaNacimiento.toLocal()}'.split(' ')[0]),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () => _selectDate(context, true),
-              ),
-              DropdownButtonFormField<String>(
-                initialValue: _sexo,
-                decoration: const InputDecoration(labelText: 'Sexo'),
-                items: _sexoOptions
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (val) => setState(() => _sexo = val!),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _perfilController,
-                decoration: const InputDecoration(
-                    labelText:
-                        'Perfil Deportivo (Ej: Saltos, Lanzamientos, Velocidad)'),
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Requerido' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _mejorMarcaController,
-                decoration: const InputDecoration(
-                    labelText: 'Mejor Marca (e.g. 500kg Total)'),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Fecha de Mejor Marca'),
-                subtitle: Text('${_fechaMejorMarca.toLocal()}'.split(' ')[0]),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () => _selectDate(context, false),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _competenciaController,
-                decoration:
-                    const InputDecoration(labelText: 'Competencia Objetivo'),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _categoriaController,
-                decoration: const InputDecoration(
-                    labelText: 'Categoría (Ej: Sub-20, Senior, Master)'),
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: const Text('Guardar Perfil'),
-              )
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateSelector(String label, DateTime date, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.calendar_today_outlined),
+        ),
+        child: Text(
+          '${date.toLocal()}'.split(' ')[0],
+          style: const TextStyle(fontSize: 16),
         ),
       ),
     );

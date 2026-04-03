@@ -5,6 +5,102 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.2.1 - 2026-04-03 🛠️ Estabilización y "Modo Seguro"
+
+### Funcionalidades y Mejoras
+* **Inicio Robusto (Anti-White Screen)**:
+  - Implementación de `try-catch` global en `main.dart` para capturar fallos de inicialización (Firebase/Hive).
+  - Pantalla de error técnica en lugar de colgarse en blanco si falla el arranque.
+* **Corrección de Navegación (Web Black Screen)**:
+  - Corregido error en `NuevoRegistroScreen` que cerraba la app (`Navigator.pop`) al guardar un registro desde la pestaña principal.
+  - Implementada limpieza de formulario automática tras guardado exitoso en modo "Nueva Sesión".
+* **Optimización Android**:
+  - Activado **MultiDex** para soportar el alto número de métodos de las librerías de visión.
+  - Configurados filtros **ABI** (`arm64-v8a`, `armeabi-v7a`) en `build.gradle.kts` para mejorar la compatibilidad y reducir el tamaño del binario.
+  - Añadidos permisos explícitos de `INTERNET` y `STORAGE`.
+
+### Gestión de Datos
+* **Adaptadores Hive seguros**: Refuerzo de `AxonAnalysisModelAdapter` con comprobaciones de nulidad para evitar crashes al leer registros antiguos o incompletos.
+* **Diagnóstico de Guardado**: Captura granular de errores en `AxonLabNotifier` con notificaciones visuales (SnackBar) para el usuario.
+
+### Notas de Versión
+* **Aislamiento de Dependencias**: Por motivos de diagnóstico, se han desactivado temporalmente las funciones nativas de `FFmpeg` y `ML Kit` para garantizar un arranque estable. Las funciones de análisis de video están en modo "Stub" (simulado).
+
+---
+## v0.2.0 - 2026-03-29 🎬 Laboratorio Axon Offline
+
+### Funcionalidades
+* **Análisis Biomecánico de Video (Offline)**: Migración de procesamiento en tiempo real con cámara a procesamiento de archivos de video.
+  - Selector nativo de videos (`image_picker`) y previsualización (`video_player`).
+  - Al no depender de la latencia de la CPU, usa la tasa de cuadros original (FPS extraídos con `FFprobe`) para calcular el tiempo ($\Delta t = \text{frames} \times \frac{1000}{fps}$), logrando precisión inalterable.
+  - Capacidad nativa de analizar videos *Slow Motion* (60, 120, 240 fps) reduciendo drásticamente el margen de error del RSI (ej. baja a error de 8.3ms en 120fps).
+* **Motor Asíncrono e Isolates**:
+  - `VideoProcessorService`: Extrae silenciosamente cada frame JPEG del video en una caché oculta utilizando comandos nativos de `ffmpeg_kit_flutter_min_gpl`.
+  - Mantenimiento UI fluido: Tanto ML Kit (Pliometría) como la iteración binaria por color HSV (VBT) fueron desplazados a un hilo paralelo multiescala (`Isolate.run`), permitiendo que el hilo de Dart principal respire y muestre indicadores fluidos de progreso.
+* **Overlays Interactivos de Reproducción**:
+  - En lugar de dibujar poses estáticas, la app ahora sincroniza las etiquetas de **🔵 VUELO** y **🟢 CONTACTO** con la reproducción en el tiempo del propio `VideoPlayer` (Pliometría).
+  - Componente VBT dibuja una gráfica analítica compacta (`fl_chart`) superpuesta al reproductor indicando la trayectoria exacta per-pixel calculada y marcando la fase concéntrica.
+
+### Sistema y Gestión
+* **Dependencias**: Se eliminó `camera`. Se incorporaron `image_picker`, `video_player`, `ffmpeg_kit_flutter_min_gpl` e `image`. (Atención al aumento del tamaño APK a causar de dependencias C++ como libffmpeg).
+* **Gestión de Memoria (Test 6)**: Limpieza heurística agresiva (`delete(recursive: true)`) de la memoria /cache al terminar o abortar el análisis.
+* **Certificación FPS (Test 5)**: Pruebas unitarias extendidas validando que 30fps y 60fps generen velocidades (`VMC`) idénticas ante equivalencias de distancia.
+
+---
+## v0.1.0 - 2026-03-29 🔬 Laboratorio Axon
+
+### Funcionalidades
+* **Laboratorio Axon**: Nueva sección accesible desde el Drawer (`Icons.biotech`) con análisis de rendimiento deportivo en tiempo real mediante la cámara del dispositivo.
+  - Dos módulos: **Potencia y Gimnasio (VBT)** y **Pliometría y Carrera (RSI)**
+  - Pantalla principal con tarjetas animadas (micro-animaciones on tap) y paleta Titanium Minimalist (`#F8FAFC` / `#0284C7`)
+
+* **VBT — Velocity Based Training**:
+  - `VbtCalibrationScreen`: Input del diámetro del disco (ej. 0.45 m) con presets de carga olímpica. Calcula automáticamente el ratio px/m.
+  - `VbtAnalysisScreen`: `CameraPreview` con overlay `VbtTrackingPainter` (círculo de tracking + línea de trayectoria en degradado) sobre el disco.
+  - Detección de fases: ↓ Excéntrica / — Isometría / ↑ Concéntrica con anti-ruido (`minConcentricFrames`).
+  - Cálculo VMC (Velocidad Media Concéntrica): desplazamiento(m) / tiempo_concéntrico(s).
+  - Detección de disco por color (espacio HSV) con blob detection.
+
+* **Pliometría y Carrera (RSI)**:
+  - `PlyometryAnalysisScreen`: ML Kit Pose Detection con `PosePainter` que superpone el esqueleto completo sobre la cámara.
+  - Máquina de estados: `idle → grounded → takeoff → flight → landing` con debounce por frames.
+  - Indicadores: 🟢 Contacto / 🔵 Vuelo / 🟡 Aterrizaje con colores en tiempo real.
+  - RSI = TV(s) / TC(s) con código de color (verde ≥2.5, ámbar ≥1.5, rojo <1.5).
+
+* **Gestión de Datos**:
+  - Modelo `AxonAnalysisModel` (Hive `typeId: 4`) con campos VBT y Pliometría unificados.
+  - `AxonLabProvider` (Riverpod): persistencia local (Hive) + sync Firestore.
+  - Etiquetado por **Carpetas de Análisis** (ej. "Sentadilla Posterior ½").
+  - Actualización automática del **ADN del Atleta** en Firestore (`users/{uid}/dna_atletico/axon_lab`) al guardar.
+
+* **Tests unitarios** (20 tests, todos pasando):
+  - `test/lab/vbt_calibration_test.dart` → error < 3%, inversibilidad, edge cases
+  - `test/lab/vbt_phase_detection_test.dart` → isometría no dispara concéntrica, ruido, proporcionalidad VMC
+  - `test/lab/plyometry_timing_test.dart` → RSI puro, desviación ≤1 frame (33ms), estados válidos/inválidos
+
+### Dependencias añadidas
+* `camera: ^0.11.0+2` — Preview y captura de frames
+* `google_mlkit_pose_detection: ^0.12.0` — Detección de esqueleto para RSI
+* `path_provider: ^2.1.3` — Almacenamiento local
+
+### Problemas conocidos
+* ML Kit Pose Detection **requiere dispositivo físico Android** con GPU (no funciona en emulador).
+* El tracking de disco usa detección por color HSV. En condiciones de muy baja iluminación o discos sin contraste puede perder el lock (Test 4 pendiente validación en dispositivo).
+
+### Sugerencias
+* Añadir histórico con gráficas de VMC y RSI por ejercicio (integrar con `fl_chart`).
+* Exportar sesión de Laboratorio Axon a PDF/CSV.
+* Soporte para análisis offline de video ya grabado.
+* Implementar tracking con TensorFlow Lite para mayor robustez en disco sin color contrastante.
+
+---
+## v0.0.9+2 - 2026-03-23 🐛 Hotfix: Sync Crash & Context
+
+### Correcciones y mejoras
+* ✅ **Crash en Sincronización**: Solucionado error al forzar sincronización desde el Drawer.
+  - **Causa**: Uso de `context` desmontado al cerrar el Drawer antes de abrir el diálogo, y conflicto de nombres de variable `context`.
+  - **Solución**: Se mantiene el Drawer abierto durante el proceso y se usa un contexto explícito (`dialogContext`) para el diálogo.
+
 ---
 ## v0.0.9+1 - 2026-03-23 🐛 Hotfix: Drawer Crash
 
@@ -211,6 +307,6 @@ Para volver a habilitar el sistema de login completo:
 
 ---
 
-**Última actualización**: 2026-03-23  
-**Versión actual**: v0.0.9+1 (Hotfix Drawer)  
-**Estado**: Estable & Sincronizado (Autenticación Obligatoria)
+**Última actualización**: 2026-04-03
+**Versión actual**: v0.2.1 — Estabilización y "Modo Seguro"
+**Estado**: Operativo (Safe Mode) — Corrección de Navegación y Crash de Inicio
