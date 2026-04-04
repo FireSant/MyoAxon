@@ -14,8 +14,8 @@ final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
 final sessionListProvider =
     StateNotifierProvider<SessionListNotifier, List<SessionModel>>((ref) {
   final repo = ref.watch(sessionRepositoryProvider);
-  final auth = ref.watch(authStateProvider).value;
-  return SessionListNotifier(repo, auth?.uid);
+  final userId = ref.watch(currentUserIdProvider);
+  return SessionListNotifier(repo, userId);
 });
 
 class SessionListNotifier extends StateNotifier<List<SessionModel>> {
@@ -27,7 +27,8 @@ class SessionListNotifier extends StateNotifier<List<SessionModel>> {
     _load();
     // Escuchar cambios en la caja Hive para actualizar la UI en tiempo real
     _boxSubscription = _repository.boxWatch.listen((event) {
-      debugPrint('🔄 [SessionProvider] Cambio detectado en Hive (key: ${event.key}), recargando estado');
+      debugPrint(
+          '🔄 [SessionProvider] Cambio detectado en Hive (key: ${event.key}), recargando estado');
       _load();
     });
   }
@@ -87,13 +88,17 @@ class SessionListNotifier extends StateNotifier<List<SessionModel>> {
   /// Call this when user logs in to populate local database with cloud sessions.
   Future<void> pullFromFirebase() async {
     if (_userId == null) {
-      debugPrint('⚠️ [SessionProvider] pullFromFirebase: userId es null, cancelando');
+      debugPrint(
+          '⚠️ [SessionProvider] pullFromFirebase: userId es null, cancelando');
       return;
     }
-    debugPrint('🔄 [SessionProvider] Iniciando pullFromFirebase para userId: $_userId');
+    debugPrint(
+        '🔄 [SessionProvider] Iniciando pullFromFirebase para userId: $_userId');
     await _repository.downloadSessionsFromFirebase(_userId);
-    debugPrint('🔄 [SessionProvider] Descarga completada, recargando estado local');
+    debugPrint(
+        '🔄 [SessionProvider] Descarga completada, recargando estado local');
     _load(); // refresh local state with downloaded sessions
-    debugPrint('🔄 [SessionProvider] Estado local actualizado. Sesiones en state: ${state.length}');
+    debugPrint(
+        '🔄 [SessionProvider] Estado local actualizado. Sesiones en state: ${state.length}');
   }
 }

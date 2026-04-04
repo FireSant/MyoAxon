@@ -16,15 +16,29 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfileModel?>> {
 
   Future<void> loadProfile(String uid) async {
     state = const AsyncValue.loading();
+    debugPrint('🔍 [UserProfileNotifier] Intentando cargar perfil para: $uid');
     try {
       // Intentar cargar localmente
       var profile = repository.getProfile(uid);
-
-      // Si no existe localmente, intentar descargar de Firebase
-      profile ??= await repository.fetchProfileFromFirebase(uid);
+      if (profile != null) {
+        debugPrint(
+            '📦 [UserProfileNotifier] Perfil encontrado en Hive: ${profile.nombreCompleto}');
+      } else {
+        debugPrint(
+            '☁️ [UserProfileNotifier] Perfil NO en Hive. Intentando Firebase...');
+        profile = await repository.fetchProfileFromFirebase(uid);
+        if (profile != null) {
+          debugPrint(
+              '☁️ [UserProfileNotifier] Perfil recuperado de Firebase con éxito.');
+        } else {
+          debugPrint(
+              '⚠️ [UserProfileNotifier] No se encontró perfil ni en Hive ni en Firebase.');
+        }
+      }
 
       state = AsyncValue.data(profile);
     } catch (e, st) {
+      debugPrint('❌ [UserProfileNotifier] Error fatal cargando perfil: $e');
       state = AsyncValue.error(e, st);
     }
   }
@@ -54,22 +68,21 @@ final userProfileProvider =
   final repository = ref.watch(userProfileRepositoryProvider);
   final notifier = UserProfileNotifier(repository);
 
-  // Escuchar cambios en auth
+  // Escuchar cambios en el UID (Doble Persistencia)
   ref.listen(
-    authStateProvider,
-    (previous, next) {
-      // next is AsyncValue<User?>
-      final user = next.value;
-      if (user != null) {
-        notifier.loadProfile(user.uid);
-        // Retry syncing any sessions that were saved offline
+    currentUserIdProvider,
+    (previous, userId) {
+      if (userId != null) {
+        debugPrint('👤 [UserProfileProvider] UID detectado: $userId');
+        notifier.loadProfile(userId);
+        // Sincronización en segundo plano
         Future.microtask(
             () => ref.read(sessionListProvider.notifier).syncPending());
-        // Download sessions from Firebase (Sync Down)
-        debugPrint('👤 [UserProfileProvider] Usuario logueado, iniciando pullFromFirebase');
         Future.microtask(
             () => ref.read(sessionListProvider.notifier).pullFromFirebase());
       } else {
+        debugPrint(
+            '� [UserProfileProvider] UID es null -> Limpiando perfil local');
         notifier.clearProfile();
       }
     },

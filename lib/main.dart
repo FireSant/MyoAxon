@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -29,6 +31,21 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
+    // Habilitar persistencia offline de Firestore explícitamente
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+    debugPrint(
+        '📦 [Main] Configurada persistencia offline de Firestore (Ilimitada)');
+
+    // Ajustar persistencia en Web explícitamente para mayor seguridad
+    if (kIsWeb) {
+      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      debugPrint(
+          '🔥 [Main] Persistencia de Firebase configurada como LOCAL (Web)');
+    }
+
     // Initialize Hive (local database)
     await Hive.initFlutter();
 
@@ -45,6 +62,8 @@ void main() async {
     await Hive.openBox<UserProfileModel>('user_profiles_box');
     // Open Hive box for Laboratorio Axon
     await Hive.openBox<AxonAnalysisModel>('axon_analysis_box');
+    // Nueva caja para persistencia de Auth (separada de sesiones)
+    await Hive.openBox('auth_box');
 
     // Configuración de UI del sistema (Barra transparente y orientación)
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -106,20 +125,32 @@ class AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 1. Obtenemos el UID actual (de Firebase o de la Bandera Hive)
+    final userId = ref.watch(currentUserIdProvider);
+    // 2. Revisamos el estado crudo para saber si aún estamos "buscando"
     final authState = ref.watch(authStateProvider);
 
+    if (userId != null) {
+      debugPrint('🔑 [AuthGate] Sesión activa detectada (UID: $userId)');
+      return const _ProfileGate();
+    }
+
+    // Si no hay UID, decidimos si mostrar Login o cargar
     return authState.when(
-      data: (User? user) {
-        if (user != null) {
-          // Usuario logueado: delegamos a un widget hijo para verificar perfil
-          return const _ProfileGate();
-        }
+      data: (_) {
+        debugPrint('🔓 [AuthGate] Sin sesión confirmada -> LoginScreen');
         return const LoginScreen();
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (_, __) => const LoginScreen(),
+      loading: () {
+        debugPrint('⏳ [AuthGate] Buscando rastro de sesión...');
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      },
+      error: (e, st) {
+        debugPrint('❌ [AuthGate] Error en AuthState: $e');
+        return const LoginScreen();
+      },
     );
   }
 }
@@ -136,16 +167,25 @@ class _ProfileGate extends ConsumerWidget {
     return profileState.when(
       data: (UserProfileModel? profile) {
         if (profile == null) {
+          debugPrint(
+              '👤 [_ProfileGate] Usuario logueado pero SIN PERFIL -> CompleteProfileScreen');
           return const CompleteProfileScreen();
         }
+        debugPrint('✅ [_ProfileGate] Usuario y Perfil listos -> MainScreen');
         return const MainScreen();
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, st) => Scaffold(
-        body: Center(child: Text('Error loading profile: $e')),
-      ),
+      loading: () {
+        debugPrint('⏳ [_ProfileGate] Cargando perfil del usuario...');
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      },
+      error: (e, st) {
+        debugPrint('❌ [_ProfileGate] Error cargando perfil: $e');
+        return Scaffold(
+          body: Center(child: Text('Error loading profile: $e')),
+        );
+      },
     );
   }
 }
