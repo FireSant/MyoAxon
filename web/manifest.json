@@ -1,6 +1,6 @@
 {
-    "name": "training_app",
-    "short_name": "training_app",
+    "name": "MyoAxon",
+    "short_name": "MyoAxon",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

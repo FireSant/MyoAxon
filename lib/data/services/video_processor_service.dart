@@ -1,7 +1,5 @@
 import 'dart:io';
-// import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
-// import 'package:ffmpeg_kit_flutter_new_min_gpl/ffprobe_kit.dart';
-// import 'package:ffmpeg_kit_flutter_new_min_gpl/return_code.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 
 class VideoProcessResult {
@@ -17,27 +15,85 @@ class VideoProcessResult {
 }
 
 class VideoProcessorService {
-  /// Extrae todos los cuadros (frames) de un archivo de video a una carpeta
-  /// temporal local y determina la tasa real de cuadros por segundo (FPS).
-  Future<VideoProcessResult> extractFrames(String videoPath) async {
-    // FFmpeg is temporarily disabled for debugging startup issues
-    double fps = 30.0;
-
-    // Preparar el directorio temporal de caché
+  /// Extrae una tira de imágenes (thumbnails) para el mosaico
+  Future<List<String>> generateThumbnailStrip(
+      String videoPath, int durationMs, int intervalMs) async {
     final tempDir = await getTemporaryDirectory();
     final cacheDir = Directory(
-        '${tempDir.path}/axon_frames_${DateTime.now().millisecondsSinceEpoch}');
+        '${tempDir.path}/axon_thumbs_${DateTime.now().millisecondsSinceEpoch}');
     await cacheDir.create();
 
-    // Stub result
-    return VideoProcessResult(
-      cacheDir: cacheDir,
-      frames: [],
-      fps: fps,
+    List<Future<String?>> tasks = [];
+    int frameCount = 0;
+
+    for (int timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
+      final fileName = 'thumb_${frameCount.toString().padLeft(4, '0')}.jpg';
+      final path = '${cacheDir.path}/$fileName';
+      tasks.add(VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath: path,
+        imageFormat: ImageFormat.JPEG,
+        timeMs: timeMs,
+        quality: 10, // Baja calidad para carga ultra rápida del mosaico
+      ));
+      frameCount++;
+    }
+
+    final results = await Future.wait(tasks);
+    return results.whereType<String>().toList();
+  }
+
+  /// Extrae un frame en alta calidad en un milisegundo exacto (Despegue / Aterrizaje)
+  Future<String?> extractHighResFrame(String videoPath, int timeMs) async {
+    final tempDir = await getTemporaryDirectory();
+    final fileName =
+        'frame_${timeMs}ms_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final targetPath = '${tempDir.path}/$fileName';
+
+    return await VideoThumbnail.thumbnailFile(
+      video: videoPath,
+      thumbnailPath: targetPath,
+      imageFormat: ImageFormat.JPEG,
+      timeMs: timeMs,
+      quality: 100, // Alta calidad para precisión de píxeles
     );
   }
 
-  /// Limpia la carpeta temporal generada tras el análisis.
+  /// Extrae una secuencia completa de frames para análisis automático en Isolate.
+  Future<VideoProcessResult> extractFrameSequence(
+      String videoPath, int targetFps, int durationMs) async {
+    final tempDir = await getTemporaryDirectory();
+    final cacheDir = Directory(
+        '${tempDir.path}/axon_seq_${DateTime.now().millisecondsSinceEpoch}');
+    await cacheDir.create();
+
+    final int intervalMs = (1000 / targetFps).round();
+    List<File> frames = [];
+
+    // Extraemos frames en un bucle controlado por la duración
+    for (int timeMs = 0; timeMs <= durationMs; timeMs += intervalMs) {
+      final path = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath:
+            '${cacheDir.path}/frame_${(timeMs ~/ intervalMs).toString().padLeft(4, '0')}.jpg',
+        imageFormat: ImageFormat.JPEG,
+        timeMs: timeMs,
+        quality: 50,
+      );
+      if (path != null) frames.add(File(path));
+
+      // Seguridad: No extraer más de 500 frames por sesión para evitar OOM
+      if (frames.length > 500) break;
+    }
+
+    return VideoProcessResult(
+      cacheDir: cacheDir,
+      frames: frames,
+      fps: targetFps.toDouble(),
+    );
+  }
+
+  /// Limpia la carpeta temporal.
   Future<void> clearCache(Directory cacheDir) async {
     if (cacheDir.existsSync()) {
       await cacheDir.delete(recursive: true);

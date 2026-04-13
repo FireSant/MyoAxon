@@ -36,6 +36,19 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
 
   VbtResult? _result;
 
+  // -- NUEVOS ESTADOS PARA MOSAICO NATIVO --
+  List<String> _thumbnailPaths = [];
+  bool _isGeneratingMosaico = false;
+  int _currentScrollMs = 0;
+
+  // -- NUEVOS ESTADOS PARA CALIBRACIÓN POR TOQUE --
+  File? _calibrationFrame; // El frame seleccionado para calibrar
+  Offset? _selectedPoint; // Punto tocado por el usuario
+  double? _detectedDiameterPx;
+  double? _targetHue;
+  bool _isCalibrating = false;
+  double _pixelsPerMeter = 1.0;
+
   // ignore: prefer_final_fields
   String _folderName = 'Potencia y Gimnasio (VBT)';
   String _exerciseLabel = 'Sentadilla Posterior';
@@ -83,55 +96,155 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
     setState(() {});
   }
 
-  Future<void> _processVideo() async {
+  Future<void> _generateMosaico() async {
     if (_videoFile == null || _isProcessing) return;
 
     setState(() {
       _isProcessing = true;
-      _statusText = '1/2: FFmpeg extrayendo cuadros...';
-      _progress = 0.3;
+      _statusText = '1/2: Generando Mosaico Nativo...';
+      _progress = 0.1;
     });
 
-    VideoProcessResult? processResult;
     try {
-      processResult = await _videoProcessor.extractFrames(_videoFile!.path);
-      if (processResult.frames.isEmpty) {
-        throw Exception('No se extrajeron frames.');
+      final int duration = _videoCtrl!.value.duration.inMilliseconds;
+      // Generamos un thumb cada 200ms para una navegación fluida
+      _thumbnailPaths = await _videoProcessor.generateThumbnailStrip(
+          _videoFile!.path, duration, 200);
+
+      setState(() {
+        _isProcessing = false;
+        _isGeneratingMosaico = true;
+        _statusText = '🎞️ Desliza para buscar el inicio del movimiento';
+        _progress = 0.5;
+      });
+    } catch (e) {
+      setState(() {
+        _isProcessing = false;
+        _statusText = 'Error en Mosaico: $e';
+      });
+    }
+  }
+
+  Future<void> _confirmMosaicoFrame() async {
+    setState(() {
+      _isProcessing = true;
+      _statusText = 'Extrayendo cuadro de alta resolución...';
+    });
+
+    final framePath = await _videoProcessor.extractHighResFrame(
+        _videoFile!.path, _currentScrollMs);
+
+    if (framePath != null) {
+      setState(() {
+        _calibrationFrame = File(framePath);
+        _isCalibrating = true;
+        _isGeneratingMosaico = false;
+        _isProcessing = false;
+        _statusText = '🎯 Toca el CENTRO del disco para calibrar';
+      });
+    }
+  }
+
+  VideoProcessResult? _lastProcessResult;
+
+  void _onCalibrationTap(Offset localPosition, double containerWidth,
+      double containerHeight) async {
+    if (_calibrationFrame == null || !_isCalibrating || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _statusText = 'Detectando disco...';
+    });
+
+    final bytes = await _calibrationFrame!.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return;
+
+    // Mapeo de coordenadas locales de la UI a coordenadas reales de la imagen
+    final double scaleX = decoded.width / containerWidth;
+    final double scaleY = decoded.height / containerHeight;
+    final int cx = (localPosition.dx * scaleX).round();
+    final int cy = (localPosition.dy * scaleY).round();
+
+    final analyzer = VbtAnalyzerService();
+    final color = analyzer.sampleColorAt(
+        decoded.getBytes(order: img.ChannelOrder.rgba), decoded.width, cx, cy);
+
+    final diameter = analyzer.detectDiameterFromPoint(
+        decoded.getBytes(order: img.ChannelOrder.rgba),
+        decoded.width,
+        decoded.height,
+        cx,
+        cy,
+        color[0]);
+
+    setState(() {
+      _selectedPoint = localPosition;
+      _detectedDiameterPx = diameter;
+      _targetHue = color[0];
+      _pixelsPerMeter = diameter / widget.diskDiameterMeters;
+      _isProcessing = false;
+      _statusText =
+          'Disco detectado (${diameter.toStringAsFixed(1)}px). ¿Correcto?';
+    });
+  }
+
+  Future<void> _startFinalAnalysis() async {
+    if (_videoFile == null || _targetHue == null) return;
+
+    setState(() {
+      _isProcessing = true;
+      _isCalibrating = false;
+      _statusText = '1/2: Extrayendo frames (Secuencia Nativa)...';
+      _progress = 0.7;
+    });
+
+    try {
+      // 1. Extraer secuencia completa a 30fps para el tracking
+      final duration = _videoCtrl!.value.duration.inMilliseconds;
+      _lastProcessResult = await _videoProcessor.extractFrameSequence(
+          _videoFile!.path, 30, duration);
+
+      if (_lastProcessResult == null || _lastProcessResult!.frames.isEmpty) {
+        throw Exception('No se pudieron extraer los frames para el análisis.');
       }
 
       setState(() {
-        _statusText = '2/2: Analizando VBT (Isolate)...';
-        _progress = 0.6;
+        _statusText = '2/2: Analizando trayectoria (Isolate)...';
+        _progress = 0.9;
       });
 
+      // 2. Ejecutar análisis en Isolate
       final rootToken = RootIsolateToken.instance!;
-      final framePaths = processResult.frames.map((f) => f.path).toList();
+      final List<String> framePaths =
+          _lastProcessResult!.frames.map((File f) => f.path).toList();
 
       final result = await Isolate.run(() => _analyzeFramesIsolate(
             token: rootToken,
             framePaths: framePaths,
-            fps: processResult!.fps,
-            diskMeters: widget.diskDiameterMeters,
+            fps: _lastProcessResult!.fps,
+            pxPerMeter: _pixelsPerMeter,
+            targetHue: _targetHue!,
           ));
 
       setState(() {
         _result = result;
         _isProcessing = false;
         _statusText = result.isValid
-            ? 'Análisis completado: VMC ${result.vmcMs.toStringAsFixed(2)} m/s'
-            : 'No se detectó fase concéntrica sostenida';
+            ? 'VMC: ${result.vmcMs.toStringAsFixed(2)} m/s'
+            : 'Fase concéntrica no detectada o muy corta';
         _progress = 1.0;
         if (result.isValid) _videoCtrl?.play();
       });
     } catch (e) {
       setState(() {
         _isProcessing = false;
-        _statusText = 'Error en VBT: $e';
-        _progress = 0;
+        _statusText = 'Error: $e';
       });
     } finally {
-      if (processResult != null) {
-        _videoProcessor.clearCache(processResult.cacheDir);
+      if (_lastProcessResult != null) {
+        _videoProcessor.clearCache(_lastProcessResult!.cacheDir);
+        _lastProcessResult = null;
       }
     }
   }
@@ -140,23 +253,16 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
     required RootIsolateToken token,
     required List<String> framePaths,
     required double fps,
-    required double diskMeters,
+    required double pxPerMeter,
+    required double targetHue,
   }) async {
-    // Si bien no usamos PlatformChannels aquí, es buena práctica inicializarlo
     BackgroundIsolateBinaryMessenger.ensureInitialized(token);
-
     final analyzer = VbtAnalyzerService();
-    // Calibración inicial: asumimos que el disco en visual de preview tiene 120px de diámetro real.
-    // En video full HD será más, pero usamos un estimado si no hay calibración manual de frame.
-    const double diskPx = 200.0;
-    final pxPerMeter = analyzer.calibrate(
-        diskDiameterMeters: diskMeters, diskDiameterPixels: diskPx);
 
     final double msPerFrame = 1000.0 / fps;
-    List<double> yPositions = [];
+    List<double> rawY = [];
     List<int> timestamps = [];
 
-    // Tracker simple (si no detecta, usa la posición anterior para suavizar)
     double lastY = -1;
 
     for (int i = 0; i < framePaths.length; i++) {
@@ -164,34 +270,34 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) continue;
 
-      // Extracción RGBA de package:image.
-      // decoded.getBytes(order: img.ChannelOrder.rgba) sirve en v4+
       final rgba = decoded.getBytes(order: img.ChannelOrder.rgba);
-
-      // Asumimos Target Color Azul oscuro por defecto para discos bumper?
-      // Como ejemplo en este código buscamos un color de alta saturación (ej. discos o marcadores)
-      // Para test offline, si `detectDiskCenter` falla por luz usamos la posición previa ± ruido
       final center = analyzer.detectDiskCenter(
         rgbaBytes: rgba,
         width: decoded.width,
         height: decoded.height,
-        minSaturation: 0.3, // Menos estricto en offline
+        targetHue: targetHue,
+        minSaturation: 0.25,
       );
 
       if (center != null) {
         lastY = center['cy']!;
-      } else if (lastY == -1) {
-        lastY = decoded.height / 2; // Init fallback
       }
 
-      yPositions.add(lastY);
-      timestamps.add((i * msPerFrame).round());
+      if (lastY != -1) {
+        rawY.add(lastY);
+        timestamps.add((i * msPerFrame).round());
+      }
     }
 
+    // Suavizado de trayectoria para evitar "temblor"
+    final smoothedY = analyzer.smoothTrajectory(rawY, windowSize: 5);
+
     return analyzer.trackPhase(
-      yPositions: yPositions,
+      yPositions: smoothedY,
       timestamps: timestamps,
       pixelsPerMeter: pxPerMeter,
+      minConcentricFrames: 5,
+      minConcentricDistancePx: 10.0, // Umbral mínimo de subida
     );
   }
 
@@ -209,6 +315,7 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
       vmcMs: _result!.vmcMs,
       concentricDurationMs: _result!.concentricDurationMs,
       displacementM: _result!.displacementM,
+      pixelsPerMeter: _pixelsPerMeter,
     );
 
     try {
@@ -236,7 +343,7 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('VBT (Offline)'),
+        title: Text(_isCalibrating ? 'Calibrar Disco' : 'VBT (Offline)'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -255,43 +362,96 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (_videoCtrl != null && _videoCtrl!.value.isInitialized)
-                        AspectRatio(
-                          aspectRatio: _videoCtrl!.value.aspectRatio,
-                          child: VideoPlayer(_videoCtrl!),
-                        )
-                      else if (_videoFile == null)
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.fitness_center_rounded,
-                                color: Colors.white38, size: 48),
-                            const SizedBox(height: 16),
-                            TextButton.icon(
-                              onPressed: _pickVideo,
-                              icon:
-                                  const Icon(Icons.add_photo_alternate_rounded),
-                              label: const Text('Seleccionar Video'),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0284C7)),
-                            )
-                          ],
-                        ),
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // MODO CALIBRACIÓN (Imagen Estática)
+                        if (_isCalibrating && _calibrationFrame != null)
+                          GestureDetector(
+                            onTapDown: (details) => _onCalibrationTap(
+                                details.localPosition,
+                                constraints.maxWidth,
+                                constraints.maxHeight),
+                            child: Stack(
+                              children: [
+                                Image.file(_calibrationFrame!,
+                                    fit: BoxFit.contain,
+                                    width: constraints.maxWidth,
+                                    height: constraints.maxHeight),
+                                if (_selectedPoint != null)
+                                  Positioned(
+                                    left: _selectedPoint!.dx - 20,
+                                    top: _selectedPoint!.dy - 20,
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: const Color(0xFF22C55E),
+                                            width: 2),
+                                      ),
+                                      child: const Center(
+                                          child: Icon(Icons.add,
+                                              color: Color(0xFF22C55E),
+                                              size: 20)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          )
+                        // MODO VIDEO / RESULTADO
+                        else if (_videoCtrl != null &&
+                            _videoCtrl!.value.isInitialized)
+                          AspectRatio(
+                            aspectRatio: _videoCtrl!.value.aspectRatio,
+                            child: VideoPlayer(_videoCtrl!),
+                          )
+                        // MODO MOSAICO (Scrubber)
+                        else if (_isGeneratingMosaico &&
+                            _thumbnailPaths.isNotEmpty)
+                          _MosaicoScrubber(
+                            thumbnailPaths: _thumbnailPaths,
+                            durationMs:
+                                _videoCtrl!.value.duration.inMilliseconds,
+                            onChanged: (ms) {
+                              setState(() => _currentScrollMs = ms);
+                              _videoCtrl?.seekTo(Duration(milliseconds: ms));
+                            },
+                          )
+                        else if (_videoFile == null)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.fitness_center_rounded,
+                                  color: Colors.white38, size: 48),
+                              const SizedBox(height: 16),
+                              TextButton.icon(
+                                onPressed: _pickVideo,
+                                icon: const Icon(
+                                    Icons.add_photo_alternate_rounded),
+                                label: const Text('Seleccionar Video'),
+                                style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF0284C7)),
+                              )
+                            ],
+                          ),
 
-                      // Overlay de Chart Fl Chart si hay resultado
-                      if (_result != null &&
-                          _result!.isValid &&
-                          _result!.yPositions.isNotEmpty)
-                        Positioned(
-                          bottom: 10, left: 10, right: 10,
-                          height: 120, // Altura del gráfico mini
-                          child: _VbtMiniChart(result: _result!),
-                        ),
-                    ],
-                  ),
+                        // Overlay de Chart Fl Chart si hay resultado
+                        if (_result != null &&
+                            _result!.isValid &&
+                            _result!.yPositions.isNotEmpty)
+                          Positioned(
+                            bottom: 10,
+                            left: 10,
+                            right: 10,
+                            height: 120, // Altura del gráfico mini
+                            child: _VbtMiniChart(result: _result!),
+                          ),
+                      ],
+                    );
+                  }),
                 ),
               ),
             ),
@@ -307,9 +467,22 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Text(_statusText,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center),
+              child: Column(
+                children: [
+                  Text(_statusText,
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 13),
+                      textAlign: TextAlign.center),
+                  if (_isCalibrating && _detectedDiameterPx != null)
+                    Text(
+                      'Escala detectada: ${(_detectedDiameterPx! / widget.diskDiameterMeters).toStringAsFixed(1)} px/m',
+                      style: const TextStyle(
+                          color: Color(0xFF38BDF8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                ],
+              ),
             ),
 
             if (_result != null && _result!.isValid)
@@ -377,38 +550,64 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.network_ping_rounded),
-                          label: const Text('Analizar'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF0284C7),
-                            side: const BorderSide(color: Color(0xFF0284C7)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: (_videoFile == null || _isProcessing)
-                              ? null
-                              : _processVideo,
-                        ),
-                      ),
-                      if (_result != null && _result!.isValid) ...[
-                        const SizedBox(width: 12),
+                      if (_isCalibrating)
                         Expanded(
                           child: ElevatedButton.icon(
-                            icon: const Icon(Icons.save_alt_rounded),
-                            label: const Text('Guardar'),
+                            icon: const Icon(Icons.play_circle_fill_rounded),
+                            label: const Text('Confirmar y Analizar'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0284C7),
+                              backgroundColor: const Color(0xFF22C55E),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),
-                            onPressed: _saveResult,
+                            onPressed: (_selectedPoint == null || _isProcessing)
+                                ? null
+                                : _startFinalAnalysis,
+                          ),
+                        )
+                      else ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: Icon(_isGeneratingMosaico
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.grid_view_rounded),
+                            label: Text(_isGeneratingMosaico
+                                ? 'Seleccionar este Cuadro'
+                                : 'Seleccionar y Calibrar'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0284C7),
+                              side: const BorderSide(color: Color(0xFF0284C7)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: (_videoFile == null || _isProcessing)
+                                ? null
+                                : _isGeneratingMosaico
+                                    ? _confirmMosaicoFrame
+                                    : _generateMosaico,
                           ),
                         ),
+                        if (_result != null && _result!.isValid) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.save_alt_rounded),
+                              label: const Text('Guardar'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0284C7),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: _saveResult,
+                            ),
+                          ),
+                        ]
                       ]
                     ],
                   ),
@@ -418,6 +617,72 @@ class _VbtAnalysisScreenState extends ConsumerState<VbtAnalysisScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Widget de Mosaico para Navegación Visual ──
+class _MosaicoScrubber extends StatefulWidget {
+  final List<String> thumbnailPaths;
+  final int durationMs;
+  final Function(int) onChanged;
+
+  const _MosaicoScrubber({
+    required this.thumbnailPaths,
+    required this.durationMs,
+    required this.onChanged,
+  });
+
+  @override
+  State<_MosaicoScrubber> createState() => _MosaicoScrubberState();
+}
+
+class _MosaicoScrubberState extends State<_MosaicoScrubber> {
+  double _value = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.thumbnailPaths.isEmpty) return const SizedBox();
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Preview del Thumb actual
+        Container(
+          height: 180,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF38BDF8), width: 2),
+            image: DecorationImage(
+              image: FileImage(
+                File(widget.thumbnailPaths[
+                    (_value * (widget.thumbnailPaths.length - 1)).round()]),
+              ),
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Slider de Mosaico
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Slider(
+            value: _value,
+            onChanged: (v) {
+              setState(() => _value = v);
+              final ms = (v * widget.durationMs).round();
+              widget.onChanged(ms);
+            },
+            activeColor: const Color(0xFF0284C7),
+            inactiveColor: Colors.white12,
+          ),
+        ),
+        const Text(
+          'Desliza para buscar el punto exacto',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+      ],
     );
   }
 }

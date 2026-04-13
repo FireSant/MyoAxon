@@ -79,13 +79,14 @@ class VbtAnalyzerService {
     required List<int> timestamps,
     required double pixelsPerMeter,
     int minConcentricFrames = 5,
+    double minConcentricDistancePx = 15.0, // Aprox ~2.5-3cm
   }) {
     assert(yPositions.length == timestamps.length,
         'yPositions y timestamps deben tener el mismo largo');
 
     if (yPositions.length < 3) return VbtResult.empty;
 
-    // 1. Encuentra el índice del punto más bajo (Y máximo en coordenadas de pantalla)
+    // 1. Encuentra el punto más bajo (Y máximo)
     int lowestIndex = 0;
     double maxY = yPositions[0];
     for (int i = 1; i < yPositions.length; i++) {
@@ -95,49 +96,66 @@ class VbtAnalyzerService {
       }
     }
 
-    // Si el punto más bajo está al final, no hay concéntrica
     if (lowestIndex >= yPositions.length - minConcentricFrames) {
       return VbtResult.empty;
     }
 
-    // 2. Busca el inicio de la fase concéntrica después del punto más bajo.
-    //    Requiere [minConcentricFrames] frames consecutivos hacia arriba (Y decreciente)
-    //    para confirmar el inicio (evita disparar en isometría o ruido).
+    // 2. Busca inicio de concéntrica con Doble Validación:
+    //    a) Frames consecutivos hacia arriba.
+    //    b) Desplazamiento mínimo (Threshold de Isometría).
     int startConcentricIndex = -1;
+    final double yStartRef = yPositions[lowestIndex];
+
     for (int i = lowestIndex;
         i < yPositions.length - minConcentricFrames;
         i++) {
-      bool allUp = true;
+      // Verificamos si desde este punto i hay una subida sostenida
+      bool isRising = true;
       for (int k = i; k < i + minConcentricFrames; k++) {
         if (k + 1 >= yPositions.length || yPositions[k + 1] >= yPositions[k]) {
-          allUp = false;
+          isRising = false;
           break;
         }
       }
-      if (allUp) {
-        startConcentricIndex = i;
-        break;
+
+      if (isRising) {
+        // Verificamos si el desplazamiento total desde el punto más bajo es suficiente
+        final double currentDist =
+            (yStartRef - yPositions[i + minConcentricFrames]).abs();
+        if (currentDist >= minConcentricDistancePx) {
+          startConcentricIndex = i;
+          break;
+        }
       }
     }
 
     if (startConcentricIndex == -1) return VbtResult.empty;
 
-    // 3. La extensión completa es el último punto de la trayectoria
-    final int endIndex = yPositions.length - 1;
+    // 3. El final es el punto más alto después del inicio (o el final del array)
+    int endIndex = startConcentricIndex;
+    double minY = yPositions[startConcentricIndex];
+    for (int i = startConcentricIndex; i < yPositions.length; i++) {
+      if (yPositions[i] <= minY) {
+        minY = yPositions[i];
+        endIndex = i;
+      } else {
+        // Si empieza a bajar de nuevo (excéntrica de la siguiente rep o descanso)
+        // podríamos cortar aquí o seguir hasta el final si es una sola rep.
+        // Para VBT offline de una sola rep, seguimos hasta el pico máximo.
+      }
+    }
 
-    // 4. Calcula desplazamiento y tiempo
+    // 4. Cálculos finales
     final double yStartPx = yPositions[startConcentricIndex];
     final double yEndPx = yPositions[endIndex];
-    final double displacementPx =
-        (yStartPx - yEndPx).abs(); // Y decrece al subir
+    final double displacementPx = (yStartPx - yEndPx); // Debe ser positivo
     final double displacementM = pixelsToMeters(displacementPx, pixelsPerMeter);
 
     final int durationMs =
         timestamps[endIndex] - timestamps[startConcentricIndex];
 
-    if (durationMs <= 0 || displacementM <= 0) return VbtResult.empty;
+    if (durationMs <= 100 || displacementM <= 0.05) return VbtResult.empty;
 
-    // 5. VMC = desplazamiento(m) / tiempo(s)
     final double vmcMs = displacementM / (durationMs / 1000.0);
 
     return VbtResult(
@@ -150,6 +168,59 @@ class VbtAnalyzerService {
       pixelsPerMeter: pixelsPerMeter,
       isValid: true,
     );
+  }
+
+  /// Suaviza una trayectoria Y usando una media móvil simple.
+  List<double> smoothTrajectory(List<double> input, {int windowSize = 5}) {
+    if (input.length < windowSize) return input;
+    List<double> output = [];
+    for (int i = 0; i < input.length; i++) {
+      int start = math.max(0, i - windowSize ~/ 2);
+      int end = math.min(input.length - 1, i + windowSize ~/ 2);
+      double sum = 0;
+      for (int j = start; j <= end; j++) {
+        sum += input[j];
+      }
+      output.add(sum / (end - start + 1));
+    }
+    return output;
+  }
+
+  /// Captura el color HSV exacto en una coordenada (x, y).
+  List<double> sampleColorAt(Uint8List rgbaBytes, int width, int x, int y) {
+    final int idx = (y * width + x) * 4;
+    if (idx + 3 >= rgbaBytes.length) return [0, 0, 0];
+    return _rgbToHsv(
+      rgbaBytes[idx] / 255.0,
+      rgbaBytes[idx + 1] / 255.0,
+      rgbaBytes[idx + 2] / 255.0,
+    );
+  }
+
+  /// Detecta el diámetro de un disco buscando bordes desde un punto central.
+  double detectDiameterFromPoint(Uint8List rgbaBytes, int width, int height,
+      int cx, int cy, double targetHue,
+      {double tolerance = 20.0}) {
+    // Buscamos borde izquierdo
+    int left = cx;
+    while (left > 0) {
+      final color = sampleColorAt(rgbaBytes, width, left, cy);
+      if (_hueDiff(color[0], targetHue) > tolerance) break;
+      left--;
+    }
+    // Buscamos borde derecho
+    int right = cx;
+    while (right < width - 1) {
+      final color = sampleColorAt(rgbaBytes, width, right, cy);
+      if (_hueDiff(color[0], targetHue) > tolerance) break;
+      right++;
+    }
+    return (right - left).toDouble();
+  }
+
+  double _hueDiff(double h1, double h2) {
+    double diff = (h1 - h2).abs();
+    return diff > 180 ? 360 - diff : diff;
   }
 
   // ── Detección de Disco por Color ─────────────────────────────

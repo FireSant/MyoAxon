@@ -5,6 +5,27 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.3.1 - 2026-04-10 🎥 VBT "Lazy & Light" Integral
+*   **Corrección NDK:** Resuelto conflicto de NDK (`libc++_shared.so`) que causaba `PlatformException(channel-error)` en la inicialización de Firebase al compartir dependencias con FFmpeg.
+*   **Carga Diferida (Lazy Loading):** Se optimizó la arquitectura del `VideoProcessorService`. Ahora `FFmpegKit` solo se inicializa y consume memoria nativa cuando el usuario entra al Laboratorio Axon, acelerando el arranque de la app y evitando sobrecarga del NDK general.
+*   **Min-GPL:** Eliminación de dependencias monstruosas de video. Implementación definitiva de `ffmpeg_kit_flutter_new_min_gpl` para mantener el tamaño del APK controlado.
+
+
+## v0.2.2 - 2026-04-04 🔐 Estabilización de Sesiones (Doble Persistencia)
+
+### Funcionalidades y Mejoras
+* **Doble Persistencia (Arquitectura Robusta)**:
+  - Implementación de `currentUserIdProvider` centralizado que unifica Firebase Auth con una bandera de sesión local en Hive.
+  - **Arranque Instantáneo**: La app detecta la sesión localmente y entra al Home/Perfil de inmediato, mientras Firebase se despierta en segundo plano.
+  - **Escudo de Perfil**: Protección contra el borrado accidental de datos locales durante los cambios de estado transitorios de Firebase en el arranque en frío.
+* **Optimización de Almacenamiento**:
+  - Migración de la bandera de autenticación a una caja dedicada (`auth_box`), eliminando los "registros vacíos" que aparecían en el historial de entrenamientos.
+  - Limpieza automática de banderas de sesión heredadas de versiones anteriores.
+* **Backend y Offline**:
+  - Forzada la persistencia `LOCAL` en Web para evitar cierres de sesión al refrescar el navegador.
+  - Activada la caché ilimitada de Firestore offline para garantizar acceso a datos históricos sin conexión.
+
+---
 ## v0.2.1 - 2026-04-03 🛠️ Estabilización y "Modo Seguro"
 
 ### Funcionalidades y Mejoras

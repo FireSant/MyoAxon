@@ -86,14 +86,17 @@ class _PlyometryAnalysisScreenState
 
     setState(() {
       _isProcessing = true;
-      _statusText = '1/2: Extrayendo cuadros del video... (FFmpeg)';
+      _statusText = '1/2: Extrayendo cuadros (Nativo)...';
       _progress = 0.3;
     });
 
     VideoProcessResult? processResult;
     try {
-      // 1. Extraer frames
-      processResult = await _videoProcessor.extractFrames(_videoFile!.path);
+      // 1. Extraer secuencia completa a 30fps para el análisis (RSI)
+      final duration = _videoCtrl!.value.duration.inMilliseconds;
+      processResult = await _videoProcessor.extractFrameSequence(
+          _videoFile!.path, 30, duration);
+
       if (processResult.frames.isEmpty) {
         throw Exception('No se extrajeron frames.');
       }
@@ -107,7 +110,6 @@ class _PlyometryAnalysisScreenState
       final rootToken = RootIsolateToken.instance!;
       final framePaths = processResult.frames.map((f) => f.path).toList();
       final fps = processResult.fps;
-      // Convertimos el tamaño del video de int a double para evitar problemas de tipos
       final double videoH = _videoCtrl!.value.size.height.toDouble();
 
       // Ejecutar Isolate
@@ -134,7 +136,6 @@ class _PlyometryAnalysisScreenState
       });
     } finally {
       if (processResult != null) {
-        // 3. Limpiar caché en background para no bloquear UI
         _videoProcessor.clearCache(processResult.cacheDir);
       }
     }
@@ -154,8 +155,8 @@ class _PlyometryAnalysisScreenState
     // final detector = PoseDetector(
     //     options: PoseDetectorOptions(mode: PoseDetectionMode.stream));
     final analyzer = PlyometryAnalyzerService();
-    analyzer.setImageHeight(
-        videoHeight > 0 ? videoHeight : 1080); // Fallback razonable
+    // analyzer.setImageHeight(
+    //     videoHeight > 0 ? videoHeight : 1080); // Fallback razonable
 
     // final double msPerFrame = 1000.0 / fps;
 
