@@ -1,4 +1,4 @@
-// import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+// ignore_for_file: unused_field, unused_element
 
 /// Estados posibles del ciclo pliométrico
 enum PlyometryPhase { idle, grounded, takeoff, flight, landing }
@@ -34,8 +34,8 @@ class PlyometryResult {
   );
 }
 
-/// Servicio de análisis pliométrico basado en ML Kit Pose Detection.
-/// Detecta fases de vuelo y contacto analizando la posición de los tobillos.
+/// Servicio de análisis pliométrico base.
+/// Preparado para futura integración de análisis manual (Mosaico) o MediaPipe.
 class PlyometryAnalyzerService {
   // ── Umbrales de detección ───────────────────────────────────
   /// Fracción de la altura de la imagen por debajo de la cual los tobillos
@@ -76,14 +76,14 @@ class PlyometryAnalyzerService {
     _results.clear();
   }
 
-  /// Procesa un frame con poses detectadas por ML Kit y actualiza la máquina de estados.
+  /// Procesa un frame (para futura lógica manual/IA) y actualiza la máquina de estados.
   ///
   /// [poses]: lista de poses del frame actual
   /// [timestampMs]: timestamp del frame en milisegundos
   ///
   /// Returns: el [PlyometryResult] si se completó un ciclo en este frame, o null.
   PlyometryResult? processFrame(List<dynamic> poses, int timestampMs) {
-    // ML Kit is temporarily disabled for debugging startup issues
+    // TODO: Implementar análisis de frames
     return null;
   }
 
@@ -98,7 +98,7 @@ class PlyometryAnalyzerService {
 
   /// Determina si los tobillos están cerca del suelo según su posición Y normalizada.
   bool _areAnklesOnGround(dynamic pose) {
-    // ML Kit is temporarily disabled for debugging startup issues
+    // TODO: Obtener altura de tobillos para análisis automático
     return true;
   }
 

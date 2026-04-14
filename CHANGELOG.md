@@ -5,6 +5,24 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.4.0 - 2026-04-14 🔄 Rutinas Compartibles & Auto-categorización
+
+### Funcionalidades y Mejoras
+* **Ecosistema de Archivos (Base64 + Zlib)**:
+  - Nuevo módulo `SessionExportService` para generar plantillas estructurales en código Base64.
+  - Sistema de compresión cross-platform (Web incluido) instalado vía librería `archive` (algoritmo V3 nativo en Dart).
+  - Herramienta inteligente de Regex al importar rutinas que ignora emojis y texto y decodifica únicamente los arrays de la rutina completa.
+* **Auto-Categorización del Atleta**:
+  - Eliminado el input manual de `Categoría` en el form de "Completar Perfil".
+  - El sistema detecta y calcula la edad del atleta dinámicamente frente al calendario para asignar (U14, U16, U18, U20, U23, Senior) y lo muestra en el Widget Drawer y Perfil.
+* **Limpieza de ML Kit**:
+  - Eliminación definitiva del paquete `google_mlkit_pose_detection` en preparación a usar Mosaicos en Lab Axon.
+  - Disminución del tamaño general de la aplicación y aumento en compatiblidad (SDK Constraints de Android aliviados).
+
+### Notas de Versión
+* **Pausa Estratégica (Módulo de Video)**: Se ha pausado momentáneamente el desarrollo avanzado de la funcionalidad de video y frame-by-frame biocinemático para priorizar y estabilizar el sistema de Compatibilidad Web, el ecosistema de Exportación de Sesiones Base64, y la depuración estructural de estas nuevas "Features".
+
+---
 ## v0.3.1 - 2026-04-10 🎥 VBT "Lazy & Light" Integral
 *   **Corrección NDK:** Resuelto conflicto de NDK (`libc++_shared.so`) que causaba `PlatformException(channel-error)` en la inicialización de Firebase al compartir dependencias con FFmpeg.
 *   **Carga Diferida (Lazy Loading):** Se optimizó la arquitectura del `VideoProcessorService`. Ahora `FFmpegKit` solo se inicializa y consume memoria nativa cuando el usuario entra al Laboratorio Axon, acelerando el arranque de la app y evitando sobrecarga del NDK general.
@@ -328,6 +346,6 @@ Para volver a habilitar el sistema de login completo:
 
 ---
 
-**Última actualización**: 2026-04-03
-**Versión actual**: v0.2.1 — Estabilización y "Modo Seguro"
-**Estado**: Operativo (Safe Mode) — Corrección de Navegación y Crash de Inicio
+**Última actualización**: 2026-04-14
+**Versión actual**: v0.4.0 — Rutinas Compartibles & Auto-categorización
+**Estado**: Estable — Listo para exportar datos con seguridad.

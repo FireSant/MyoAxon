@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
-// import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/models/axon_analysis_model.dart';
 import '../../data/services/plyometry_analyzer_service.dart';
@@ -148,27 +147,12 @@ class _PlyometryAnalysisScreenState
     required double fps,
     required double videoHeight,
   }) async {
-    // Inicializar canales de plataforma para ML Kit en este Isolate
+    // Inicializar canales de plataforma en este Isolate
     BackgroundIsolateBinaryMessenger.ensureInitialized(token);
 
-    // ML Kit is temporarily disabled for debugging startup issues
-    // final detector = PoseDetector(
-    //     options: PoseDetectorOptions(mode: PoseDetectionMode.stream));
     final analyzer = PlyometryAnalyzerService();
-    // analyzer.setImageHeight(
-    //     videoHeight > 0 ? videoHeight : 1080); // Fallback razonable
+    // NOTA: Acá se integrará en el futuro el análisis manual o MediaPipe
 
-    // final double msPerFrame = 1000.0 / fps;
-
-    // for (int i = 0; i < framePaths.length; i++) {
-    //   final inputImage = InputImage.fromFilePath(framePaths[i]);
-    //   final poses = await detector.processImage(inputImage);
-
-    //   final timestampMs = (i * msPerFrame).round();
-    //   analyzer.processFrame(poses, timestampMs);
-    // }
-
-    // detector.close();
     return analyzer.results;
   }
 

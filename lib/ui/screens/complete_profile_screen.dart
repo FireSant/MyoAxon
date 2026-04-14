@@ -18,7 +18,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _nombreCompletoController = TextEditingController();
   final _mejorMarcaController = TextEditingController();
   final _competenciaController = TextEditingController();
-  final _categoriaController = TextEditingController();
   final _perfilController = TextEditingController();
   final _coachIdController = TextEditingController();
 
@@ -36,7 +35,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     _nombreCompletoController.dispose();
     _mejorMarcaController.dispose();
     _competenciaController.dispose();
-    _categoriaController.dispose();
     _perfilController.dispose();
     _coachIdController.dispose();
     super.dispose();
@@ -76,7 +74,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       mejorMarca: _mejorMarcaController.text,
       fechaMejorMarca: _fechaMejorMarca,
       competenciaObjetivo: _competenciaController.text,
-      categoria: _categoriaController.text,
+      categoria: UserProfileModel.calcularCategoria(_fechaNacimiento),
       rol: _rol,
       coachId: _rol == 'atleta' ? _coachIdController.text : '',
     );
@@ -178,14 +176,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Competencia Objetivo',
                       prefixIcon: Icon(Icons.flag_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _categoriaController,
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría (Ej: Sub-20, Senior)',
-                      prefixIcon: Icon(Icons.label_outline),
                     ),
                   ),
                   const SizedBox(height: 32),

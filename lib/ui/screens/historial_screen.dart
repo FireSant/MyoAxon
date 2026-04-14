@@ -7,6 +7,8 @@ import '../../data/models/gym_exercise_model.dart';
 import '../../data/models/tech_exercise_model.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../data/models/user_profile_model.dart';
+import '../../data/services/session_export_service.dart';
+import 'package:flutter/services.dart';
 import 'nuevo_registro_screen.dart';
 
 class HistorialScreen extends ConsumerWidget {
@@ -122,10 +124,67 @@ class _AthleteHistoryView extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Historial de Entrenamiento'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Importar Entrenamiento',
+              onPressed: () => _mostrarDialogoImportacion(context),
+            ),
+          ],
         ),
         body: body,
       );
     }
+  }
+
+  void _mostrarDialogoImportacion(BuildContext context) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Importar Entrenamiento'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(
+            hintText: 'Pega aquí el código copiado...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 4,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final code = ctrl.text.trim();
+              if (code.isNotEmpty) {
+                try {
+                  final template =
+                      SessionExportService.decodificarAxonCode(code);
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NuevoRegistroScreen(importedSession: template),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Importar'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Agrupa las sesiones por fecha (día) y luego por jornada
@@ -219,7 +278,7 @@ class _DateGroupWidget extends StatelessWidget {
   }
 }
 
-class _ShiftSessionCard extends StatelessWidget {
+class _ShiftSessionCard extends ConsumerWidget {
   final String jornada;
   final List<SessionModel> sessions;
 
@@ -229,7 +288,7 @@ class _ShiftSessionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Mostrar una card por cada sesión
     return Column(
       children: sessions.map((session) {
@@ -268,16 +327,61 @@ class _ShiftSessionCard extends StatelessWidget {
                 color: Theme.of(context).colorScheme.secondary,
               ),
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit, size: 20),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NuevoRegistroScreen(editingSession: session),
-                  ),
-                );
-              },
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.share, size: 20),
+                  onPressed: () async {
+                    try {
+                      debugPrint('--- Iniciando Share ---');
+                      final authorName =
+                          ref.read(userProfileProvider).value?.nombreCompleto ??
+                              'Usuario';
+                      debugPrint('AuthorName obtenido: $authorName');
+                      final texto =
+                          SessionExportService.generarMensajeCompartir(
+                              session, authorName);
+                      debugPrint('Texto generado ok. Tamaño: ${texto.length}');
+
+                      await Clipboard.setData(ClipboardData(text: texto));
+                      debugPrint('Copiado al portapapeles ok.');
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Código copiado al portapapeles 🚀'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e, st) {
+                      debugPrint('❌ ERROR EN COMPARTIR PANTALLA HISTORIAL: $e');
+                      debugPrint('$st');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error al compartir: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            NuevoRegistroScreen(editingSession: session),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             children: [
               ...session.ejerciciosGim.map((ej) => _buildGymExerciseItem(ej)),

@@ -86,6 +86,23 @@ class UserProfileModel extends HiveObject {
     );
   }
 
+  static String calcularCategoria(DateTime dob) {
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+    if (age <= 13) return 'U14';
+    if (age <= 15) return 'U16';
+    if (age <= 17) return 'U18';
+    if (age <= 19) return 'U20';
+    if (age <= 22) return 'U23';
+    return 'Senior';
+  }
+
+  String get categoriaCalculada => calcularCategoria(fechaNacimiento);
+
   // Para Firebase: Serializa
   Map<String, dynamic> toFirebase() {
     return {

@@ -94,8 +94,10 @@ class _TechCardData {
 
 class NuevoRegistroScreen extends ConsumerStatefulWidget {
   final SessionModel? editingSession;
+  final SessionModel? importedSession;
 
-  const NuevoRegistroScreen({super.key, this.editingSession});
+  const NuevoRegistroScreen(
+      {super.key, this.editingSession, this.importedSession});
 
   @override
   ConsumerState<NuevoRegistroScreen> createState() =>
@@ -124,6 +126,9 @@ class _NuevoRegistroScreenState extends ConsumerState<NuevoRegistroScreen> {
     super.initState();
     if (widget.editingSession != null) {
       _loadSessionData(widget.editingSession!);
+    } else if (widget.importedSession != null) {
+      _loadSessionData(widget.importedSession!);
+      // We start with an imported template. It's safe to clear the ID just in case
     }
   }
 

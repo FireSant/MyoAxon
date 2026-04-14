@@ -306,9 +306,7 @@ class AthleteDrawer extends ConsumerWidget {
                   Flexible(
                     child: _buildInfoChip(
                       Icons.category,
-                      profile.categoria.isNotEmpty
-                          ? profile.categoria
-                          : 'Sin categoría',
+                      profile.categoriaCalculada,
                     ),
                   ),
                 ],

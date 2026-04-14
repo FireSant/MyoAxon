@@ -32,13 +32,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 context,
                 'Nombre Completo',
                 profile.nombreCompleto,
-                () => _editField(context, 'nombreCompleto', profile.nombreCompleto, profile),
+                () => _editField(
+                    context, 'nombreCompleto', profile.nombreCompleto, profile),
               ),
               _buildEditableField(
                 context,
                 'Fecha de Nacimiento',
                 _formatDate(profile.fechaNacimiento),
-                () => _editDateField(context, 'fechaNacimiento', profile.fechaNacimiento, profile),
+                () => _editDateField(context, 'fechaNacimiento',
+                    profile.fechaNacimiento, profile),
                 isDate: true,
               ),
               _buildEditableField(
@@ -57,26 +59,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 context,
                 'Mejor Marca',
                 profile.mejorMarca,
-                () => _editField(context, 'mejorMarca', profile.mejorMarca, profile),
+                () => _editField(
+                    context, 'mejorMarca', profile.mejorMarca, profile),
               ),
               _buildEditableField(
                 context,
                 'Fecha de Mejor Marca',
                 _formatDate(profile.fechaMejorMarca),
-                () => _editDateField(context, 'fechaMejorMarca', profile.fechaMejorMarca, profile),
+                () => _editDateField(context, 'fechaMejorMarca',
+                    profile.fechaMejorMarca, profile),
                 isDate: true,
               ),
               _buildEditableField(
                 context,
                 'Competencia Objetivo',
                 profile.competenciaObjetivo,
-                () => _editField(context, 'competenciaObjetivo', profile.competenciaObjetivo, profile),
+                () => _editField(context, 'competenciaObjetivo',
+                    profile.competenciaObjetivo, profile),
               ),
-              _buildEditableField(
-                context,
-                'Categoría',
-                profile.categoria,
-                () => _editField(context, 'categoria', profile.categoria, profile),
+              ListTile(
+                title: Text(
+                  'Categoría (Auto)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                subtitle: Text(profile.categoriaCalculada),
+                trailing: Icon(Icons.calculate,
+                    size: 20, color: Theme.of(context).colorScheme.primary),
               ),
             ],
           );
@@ -106,8 +117,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       subtitle: Text(value.isEmpty ? 'No definido' : value),
       trailing: Icon(Icons.edit,
-        size: 20,
-        color: Theme.of(context).colorScheme.primary),
+          size: 20, color: Theme.of(context).colorScheme.primary),
       onTap: onTap,
     );
   }
@@ -122,7 +132,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String currentValue,
     UserProfileModel profile,
   ) async {
-    final controller = TextEditingController(text: currentValue.isEmpty ? '' : currentValue);
+    final controller =
+        TextEditingController(text: currentValue.isEmpty ? '' : currentValue);
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -204,7 +215,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     BuildContext context,
     UserProfileModel profile,
   ) async {
-    final controller = TextEditingController(text: profile.perfilDeportivo.isEmpty ? '' : profile.perfilDeportivo);
+    final controller = TextEditingController(
+        text: profile.perfilDeportivo.isEmpty ? '' : profile.perfilDeportivo);
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
