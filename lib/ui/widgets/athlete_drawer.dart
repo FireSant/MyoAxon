@@ -7,6 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../config/app_theme.dart';
 import '../screens/profile_screen.dart';
 import '../screens/laboratorio_axon_screen.dart';
+import '../screens/axon_peak_screen.dart';
 
 class AthleteDrawer extends ConsumerWidget {
   const AthleteDrawer({super.key});
@@ -76,6 +77,42 @@ class AthleteDrawer extends ConsumerWidget {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const LaboratorioAxonScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const Divider(height: 1),
+
+                // Axon Peak
+                ListTile(
+                  leading: Icon(Icons.terrain_rounded,
+                      color: Theme.of(context).primaryColor),
+                  title: const Text('Axon Peak'),
+                  subtitle: const Text('Periodización y Efecto Dominó'),
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'PRO',
+                      style: TextStyle(
+                        color: Color(0xFF8B5CF6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AxonPeakScreen(),
                       ),
                     );
                   },

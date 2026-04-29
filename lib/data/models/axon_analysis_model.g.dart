@@ -1,8 +1,10 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// Manually written adapter to avoid requiring build_runner for this model.
-// If you run build_runner, delete this file and let it regenerate.
 
 part of 'axon_analysis_model.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class AxonAnalysisModelAdapter extends TypeAdapter<AxonAnalysisModel> {
   @override
@@ -15,20 +17,20 @@ class AxonAnalysisModelAdapter extends TypeAdapter<AxonAnalysisModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return AxonAnalysisModel(
-      id: (fields[0] ?? '') as String,
-      timestamp: (fields[1] ?? DateTime.now()) as DateTime,
-      tipo: (fields[2] ?? '') as String,
-      exerciseLabel: (fields[3] ?? '') as String,
-      folderName: (fields[4] ?? '') as String,
-      athleteUid: (fields[5] ?? '') as String,
-      vmcMs: (fields[6] ?? 0.0).toDouble(),
-      displacementM: (fields[7] ?? 0.0).toDouble(),
-      concentricDurationMs: (fields[8] ?? 0) as int,
-      pixelsPerMeter: (fields[9] ?? 0.0).toDouble(),
-      flightTimeMs: (fields[10] ?? 0) as int,
-      contactTimeMs: (fields[11] ?? 0) as int,
-      rsi: (fields[12] ?? 0.0).toDouble(),
-      isSynced: (fields[13] ?? false) as bool,
+      id: fields[0] as String,
+      timestamp: fields[1] as DateTime,
+      tipo: fields[2] as String,
+      exerciseLabel: fields[3] as String,
+      folderName: fields[4] as String,
+      athleteUid: fields[5] as String,
+      vmcMs: fields[6] as double,
+      displacementM: fields[7] as double,
+      concentricDurationMs: fields[8] as int,
+      pixelsPerMeter: fields[9] as double,
+      flightTimeMs: fields[10] as int,
+      contactTimeMs: fields[11] as int,
+      rsi: fields[12] as double,
+      isSynced: fields[13] as bool,
     );
   }
 

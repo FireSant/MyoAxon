@@ -12,6 +12,8 @@ import 'data/models/gym_exercise_model.dart';
 import 'data/models/tech_exercise_model.dart';
 import 'data/models/user_profile_model.dart';
 import 'data/models/axon_analysis_model.dart';
+import 'data/models/axon_peak_config_model.dart';
+import 'data/models/training_block_model.dart';
 import 'ui/screens/main_screen.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/complete_profile_screen.dart';
@@ -55,6 +57,8 @@ void main() async {
     Hive.registerAdapter(TechExerciseModelAdapter());
     Hive.registerAdapter(UserProfileModelAdapter());
     Hive.registerAdapter(AxonAnalysisModelAdapter());
+    Hive.registerAdapter(TrainingBlockModelAdapter());
+    Hive.registerAdapter(AxonPeakConfigModelAdapter());
 
     // Open Hive box for sessions
     await Hive.openBox<SessionModel>('sessions_box');
@@ -64,6 +68,8 @@ void main() async {
     await Hive.openBox<AxonAnalysisModel>('axon_analysis_box');
     // Nueva caja para persistencia de Auth (separada de sesiones)
     await Hive.openBox('auth_box');
+    // Open Hive box for Axon Peak config
+    await Hive.openBox<AxonPeakConfigModel>('axon_peak_config_box');
 
     // Configuración de UI del sistema (Barra transparente y orientación)
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -155,7 +161,7 @@ class AuthGate extends ConsumerWidget {
   }
 }
 
-/// Widget interno para manejar el estado del perfil de forma segura
+/// Widget jjno para manejar el estado del perfil de forma segura
 class _ProfileGate extends ConsumerWidget {
   const _ProfileGate();
 

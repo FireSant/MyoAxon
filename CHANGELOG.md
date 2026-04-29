@@ -5,6 +5,34 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.5.0 - 2026-04-29 🧬 Axon Peak: Optimización de Periodización Científica
+
+### Funcionalidades y Mejoras
+* **Motor de Periodización Axon Peak**:
+  - Implementación de métodos **Por Pasos (Step-Loading)** y **Lineal Tradicional**.
+  - Lógica de autorregulación basada en **VMC (Velocidad Media Concéntrica)**.
+  - Regla de Estabilidad de 2 Bloques: Detección automática de estancamiento de velocidad (< 0.35 m/s).
+  - Sistema de "Freno de Emergencia": Opción de repetir bloques si el rendimiento VBT no es óptimo.
+* **Interfaz de Usuario Premium**:
+  - Vista Dual Interactiva: Visualización simultánea de Carga (Kg) e Intensidad (%).
+  - Soporte universal de decimales (permite uso de `,` y `.` indistintamente).
+  - Micro-animaciones y reconstrucción dinámica de estados mediante `ValueKey`.
+* **Refactorización de Datos**:
+  - Eliminación de parámetros obsoletos (`athleteLevel`).
+  - Optimización de persistencia Hive con recarga forzada para sincronización UI.
+
+### Correcciones
+- ✅ **Fix Reconstrucción de Bloques**: Corregido el error donde los cambios en las cargas no se visualizaban tras finalizar un bloque.
+- ✅ **Fix Persistencia Hive**: Reemplazo de `save()` por `_box.put()` para asegurar compatibilidad con entornos de test y producción.
+- ✅ **Fix Sintaxis UI**: Corrección de cierres de widgets en diálogos de cierre de bloque.
+
+### Tests
+- **Axon Peak Provider**: Suite de pruebas unitarias implementada en `test/providers/axon_peak_provider_test.dart` cubriendo:
+  - Generación inicial de macrociclos (StepLoading vs Linear).
+  - Lógica de repetición de bloques ante rechazo de incremento.
+
+---
+
 ## v0.4.0 - 2026-04-14 🔄 Rutinas Compartibles & Auto-categorización
 
 ### Funcionalidades y Mejoras

@@ -1,4 +1,4 @@
-# 🏋️ MyoAxon — v0.2.0
+# 🏋️ MyoAxon — v0.5.0
 
 Aplicación Flutter para el registro, seguimiento y **análisis de rendimiento deportivo en tiempo real** mediante la cámara del dispositivo. Desarrollada con **Clean Architecture** y arquitectura modular.
 Busca ser un Ecosistema de Optimización para atletas de pista y campo: un laboratorio de bolsillo que conecta métricas de carga (VBT), pliometría (RSI) y técnica con los entrenadores para ajustar el rendimiento en tiempo real.
@@ -17,6 +17,9 @@ flutter test test/lab/
 # Tests de modelos de datos
 flutter test test/models/
 
+# Solo tests de Axon Peak (Motor de Periodización)
+flutter test test/providers/axon_peak_provider_test.dart
+
 # Con cobertura
 flutter test --coverage
 ```
@@ -27,6 +30,10 @@ flutter test --coverage
 - ✅ **SessionModel**: Constructores, serialización Firebase, validaciones
 - ✅ **GymExerciseModel**: CRUD, toFirebase/fromFirebase, cálculos
 - ✅ **TechExerciseModel**: CRUD, toFirebase/fromFirebase, validaciones
+- ✅ **AxonPeakConfigModel**: Periodización, bloques, 1RM, incrementos
+
+**Providers & Lógica de Negocio**
+- ✅ **AxonPeakNotifier**: Generación de macrociclos (Step vs Linear), autorregulación VBT, lógica de repetición de bloques.
 
 **Laboratorio Axon (Offline) (23 tests)**
 - ✅ **VBT Calibración**: error < 3%, inversibilidad, edge cases de ratio px/m
@@ -106,6 +113,7 @@ Ver instrucciones completas en la [documentación oficial](https://firebase.flut
 - **Base de Datos Local**: Hive para almacenamiento offline
 - **Sincronización Cloud**: Firebase Firestore para backup y multi-dispositivo
 - **State Management**: Riverpod para gestión de estado reactiva
+- **🧬 Axon Peak (v0.5.0)**: Motor de periodización científica con autorregulación VBT, gestión de 1RM dinámico y proyecciones de carga automáticas.
 
 ### 🎬 Laboratorio Axon *(v0.2.0 - Offline)*
 
@@ -160,7 +168,8 @@ lib/
 ├── providers/                   # State Management (Riverpod)
 │   ├── session_provider.dart
 │   ├── user_profile_provider.dart
-│   └── axon_lab_provider.dart   # 🆕 Persistencia + sync Laboratorio Axon
+│   ├── axon_lab_provider.dart   # Persistencia + sync Laboratorio Axon
+│   └── axon_peak_provider.dart  # 🆕 Motor de Periodización Proyectada (Axon Peak)
 └── ui/
     ├── screens/                # Pantallas
     │   ├── main_screen.dart
