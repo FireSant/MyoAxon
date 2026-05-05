@@ -40,4 +40,39 @@ class TrainingBlockModel extends HiveObject {
   })  : exerciseLoads = exerciseLoads ?? {},
         exercisePercentages = exercisePercentages ?? {},
         recordedVMC = recordedVMC ?? {};
+
+  Map<String, dynamic> toFirebase() {
+    return {
+      'id': id,
+      'blockNumber': blockNumber,
+      'status': status,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'exerciseLoads': exerciseLoads,
+      'exercisePercentages': exercisePercentages,
+      'recordedVMC': recordedVMC,
+    };
+  }
+
+  factory TrainingBlockModel.fromFirebase(Map<String, dynamic> data) {
+    return TrainingBlockModel(
+      id: data['id'] ?? '',
+      blockNumber: data['blockNumber'] ?? 0,
+      status: data['status'] ?? '',
+      startDate: DateTime.parse(data['startDate']),
+      endDate: data['endDate'] != null ? DateTime.parse(data['endDate']) : null,
+      exerciseLoads: (data['exerciseLoads'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as List).map((e) => (e as num).toDouble()).toList()),
+          ) ??
+          {},
+      exercisePercentages: (data['exercisePercentages'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as List).map((e) => (e as num).toDouble()).toList()),
+          ) ??
+          {},
+      recordedVMC: (data['recordedVMC'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as List).map((e) => (e as num).toDouble()).toList()),
+          ) ??
+          {},
+    );
+  }
 }

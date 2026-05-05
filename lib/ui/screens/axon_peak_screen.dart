@@ -5,10 +5,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../providers/axon_peak_provider.dart';
 import '../../data/models/axon_peak_config_model.dart';
 import '../../data/models/training_block_model.dart';
+import '../../data/models/user_profile_model.dart';
 import '../../data/models/session_model.dart';
 
 class AxonPeakScreen extends ConsumerStatefulWidget {
-  const AxonPeakScreen({super.key});
+  final UserProfileModel? athleteProfile;
+  const AxonPeakScreen({super.key, this.athleteProfile});
 
   @override
   ConsumerState<AxonPeakScreen> createState() => _AxonPeakScreenState();
@@ -64,15 +66,23 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
     super.dispose();
   }
 
+  // Getter accesible en todos los métodos del State
+  bool get isCoachViewing => widget.athleteProfile != null;
+
   @override
   Widget build(BuildContext context) {
-    final configState = ref.watch(axonPeakConfigProvider);
+    final configState = isCoachViewing
+        ? ref.watch(axonPeakConfigByAthleteProvider(widget.athleteProfile!.uid))
+        : ref.watch(axonPeakConfigProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Axon Peak PRO',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+            isCoachViewing
+                ? 'Axon Peak: ${widget.athleteProfile!.nombreCompleto}'
+                : 'Axon Peak PRO',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -94,9 +104,32 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
       body: configState.when(
         data: (config) {
           if (config == null) {
+            if (isCoachViewing) {
+              return const Center(
+                child: Text('El atleta aún no ha configurado su Axon Peak.'),
+              );
+            }
             return _buildSetupWizard(context);
           }
-          return _buildActiveMacrocycle(context, config);
+          return Column(
+            children: [
+              if (isCoachViewing)
+                Container(
+                  width: double.infinity,
+                  color: Colors.amber.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: const Text(
+                    'MODO LECTURA: VIENDO COMO ENTRENADOR',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              Expanded(child: _buildActiveMacrocycle(context, config)),
+            ],
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(child: Text('Error: $err')),
@@ -132,7 +165,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
               Text(
-                  '• Por Pasos (Step-Loading): Superación de récords relativos en cada bloque. Recomendable para etapas generales y atletas Principiantes/Intermedios.'),
+                  '• Por Pasos: Superación de récords relativos en cada bloque. Recomendable para etapas generales y atletas Principiantes/Intermedios.'),
               Text(
                   '• Lineal Tradicional: Intensidad ascendente a lo largo de todo el macrociclo, manteniendo el 1RM base. Recomendado para Avanzados.'),
             ],
@@ -182,10 +215,10 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                   items: const [
                     DropdownMenuItem(
                         value: 'StepLoading',
-                        child: Text('Carga por Pasos (Axon Peak)')),
+                        child: Text('Carga por Pasos')),
                     DropdownMenuItem(
                         value: 'Linear',
-                        child: Text('Lineal Tradicional (Bompa)')),
+                        child: Text('Lineal Tradicional')),
                   ],
                   onChanged: (val) =>
                       setState(() => _periodizationMethod = val!),
@@ -404,7 +437,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16)),
               ),
-              onPressed: _exerciseIncrements.isEmpty
+              onPressed: (_exerciseIncrements.isEmpty || isCoachViewing)
                   ? null
                   : () {
                       ref
@@ -524,7 +557,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                         Switch(
                           value: config.isFreeFlow,
                           activeThumbColor: Colors.amber,
-                          onChanged: (val) {
+                          onChanged: isCoachViewing ? null : (val) {
                             ref
                                 .read(axonPeakConfigProvider.notifier)
                                 .toggleFreeFlow(val);
@@ -532,11 +565,12 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                         ),
                       ],
                     ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.refresh, color: Colors.white),
-                      label: const Text('Reset',
-                          style: TextStyle(color: Colors.white)),
-                      onPressed: () {
+                    if (!isCoachViewing)
+                      TextButton.icon(
+                        icon: const Icon(Icons.refresh, color: Colors.white),
+                        label: const Text('Reset',
+                            style: TextStyle(color: Colors.white)),
+                        onPressed: () {
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -713,6 +747,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                           color: Color(0xFF8B5CF6),
                                           fontWeight: FontWeight.bold)),
                                   TextFormField(
+                                    enabled: !isCoachViewing,
                                     initialValue: loads[w].toStringAsFixed(1),
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
@@ -730,13 +765,13 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                         contentPadding:
                                             EdgeInsets.symmetric(vertical: 4)),
                                     onFieldSubmitted: (val) {
+                                      if (isCoachViewing) return;
                                       final normalizedVal = val.replaceAll(',', '.');
                                       final newLoad =
                                           double.tryParse(normalizedVal) ?? loads[w];
                                       if (newLoad != loads[w]) {
                                         ref
-                                            .read(
-                                                axonPeakConfigProvider.notifier)
+                                            .read(axonPeakConfigProvider.notifier)
                                             .updateLoad(blockIndex, exercise, w,
                                                 newLoad);
                                       }
@@ -745,6 +780,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                   if (isCurrent) ...[
                                     const SizedBox(height: 4),
                                     TextFormField(
+                                      enabled: !isCoachViewing,
                                       initialValue:
                                           (vmcs.length > w && vmcs[w] > 0)
                                               ? vmcs[w].toStringAsFixed(2)
@@ -770,6 +806,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                             .withValues(alpha: 0.05),
                                       ),
                                       onChanged: (val) {
+                                        if (isCoachViewing) return;
                                         final normalizedVal = val.replaceAll(',', '.');
                                         final vmc = double.tryParse(normalizedVal);
                                         if (vmc != null) {

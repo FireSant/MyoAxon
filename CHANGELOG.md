@@ -5,6 +5,40 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.6.2 - 2026-05-04 🎬 Axon VBT: Bio-Cinemática de Precisión
+
+### Funcionamiento del Módulo
+El módulo **Axon VBT** (Velocity Based Training) integra análisis de video con regresiones estadísticas para la monitorización del entrenamiento. El flujo consiste en:
+1. **Configuración**: Selección de ejercicio, ROM, peso (kg) y parte corporal.
+2. **Marcación de Frames**: Identificación visual del inicio y fin de la fase concéntrica.
+3. **Cálculo Cinemático**: El motor procesa la velocidad media (VMC), calcula fatiga, potencia y estima el 1RM.
+4. **Exportación**: Generación de un dashboard visual de alta resolución para compartir o guardar.
+
+### Funcionalidades y Mejoras
+* **Modelo de Regresión Polinómica**: Sustitución de ecuaciones lineales por modelos polinómicos de 2do grado para una estimación del 1RM más precisa según el perfil individual de carga-velocidad.
+* **Cálculo de Potencia y Carga**: Incorporación de input de Peso (kg) para cálculo automático de Potencia Máxima (Watts) y e1RM absoluto.
+* **Dashboard Analítico (Shareable Card)**:
+  - Rediseño completo a una **lista vertical modular elegante** que prioriza la legibilidad.
+  - Inclusión de métricas avanzadas: **VMC Media, VMC Mínima y Coeficiente de Variación (CV%)**.
+  - Visualización de porcentaje estimado con indicador de aproximación (~% 1RM).
+* **Gráfico de Evolución Cinemática**:
+  - Ejes optimizados: Eje Y ("v/s") y Eje X ("REPETICIONES" con etiquetas numéricas limpias).
+  - Línea horizontal punteada para seguimiento visual de la **VMC Objetivo**.
+* **Gestión de Sesión**:
+  - Implementación de **Borrado de Repeticiones** con re-indexación automática de datos.
+  - Unificación de Step 3 y 4 en un resumen de serie dinámico.
+* **Branding**: Transición visual a **MyoAxon** y simplificación de leyendas legales.
+* **Correcciones**:
+  - Ajuste de `TextInputFormatter` para compatibilidad total con teclados decimales (comas por puntos).
+  - Optimización de `RepaintBoundary` para captura estable en entornos Web y Móvil.
+  - Generación de imagen con el resumen de rendimiento y opción de compartir a otras aplicaciones.
+* **Overlay de Rendimiento (OSD)**:
+  - Nueva capa visual sobre el video con estética de benchmark (GPU Review).
+  - Visualización en tiempo real de los FPS detectados y versión del motor Axon Core.
+
+### Correcciones
+* Limpieza masiva de dependencias y código de la arquitectura antigua de "Laboratorio Axon".
+
 ## v0.5.0 - 2026-04-29 🧬 Axon Peak: Optimización de Periodización Científica
 
 ### Funcionalidades y Mejoras

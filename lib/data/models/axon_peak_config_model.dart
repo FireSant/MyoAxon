@@ -54,4 +54,45 @@ class AxonPeakConfigModel extends HiveObject {
   })  : exerciseIncrements = exerciseIncrements ?? {},
         exercise1RM = exercise1RM ?? {},
         blocks = blocks ?? [];
+
+  Map<String, dynamic> toFirebase() {
+    return {
+      'id': id,
+      'userId': userId,
+      'targetDate': targetDate.toIso8601String(),
+      'weeksPerBlock': weeksPerBlock,
+      'isTaperActive': isTaperActive,
+      'isFreeFlow': isFreeFlow,
+      'athleteLevel': athleteLevel,
+      'periodizationMethod': periodizationMethod,
+      'exerciseIncrements': exerciseIncrements,
+      'exercise1RM': exercise1RM,
+      'blocks': blocks.map((b) => b.toFirebase()).toList(),
+    };
+  }
+
+  factory AxonPeakConfigModel.fromFirebase(Map<String, dynamic> data) {
+    return AxonPeakConfigModel(
+      id: data['id'] ?? '',
+      userId: data['userId'] ?? '',
+      targetDate: DateTime.parse(data['targetDate']),
+      weeksPerBlock: data['weeksPerBlock'] ?? 4,
+      isTaperActive: data['isTaperActive'] ?? true,
+      isFreeFlow: data['isFreeFlow'] ?? false,
+      athleteLevel: data['athleteLevel'] ?? 'Intermedio',
+      periodizationMethod: data['periodizationMethod'] ?? 'StepLoading',
+      exerciseIncrements: (data['exerciseIncrements'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as num).toDouble()),
+          ) ??
+          {},
+      exercise1RM: (data['exercise1RM'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, (v as num).toDouble()),
+          ) ??
+          {},
+      blocks: (data['blocks'] as List?)
+              ?.map((b) => TrainingBlockModel.fromFirebase(b as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
 }

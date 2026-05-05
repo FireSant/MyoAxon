@@ -89,6 +89,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: Icon(Icons.calculate,
                     size: 20, color: Theme.of(context).colorScheme.primary),
               ),
+              if (profile.rol == 'atleta')
+                _buildEditableField(
+                  context,
+                  'ID del Entrenador',
+                  profile.coachId,
+                  () => _editField(
+                      context, 'coachId', profile.coachId, profile),
+                ),
             ],
           );
         },
@@ -288,6 +296,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'categoria':
         updatedProfile = currentProfile.copyWith(categoria: value);
         break;
+      case 'coachId':
+        updatedProfile = currentProfile.copyWith(coachId: value);
+        break;
       default:
         return;
     }
@@ -313,6 +324,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return 'Competencia Objetivo';
       case 'categoria':
         return 'Categoría';
+      case 'coachId':
+        return 'ID del Entrenador';
       default:
         return fieldName;
     }

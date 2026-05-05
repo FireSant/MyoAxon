@@ -10,6 +10,7 @@ import '../../data/models/user_profile_model.dart';
 import '../../data/services/session_export_service.dart';
 import 'package:flutter/services.dart';
 import 'nuevo_registro_screen.dart';
+import 'axon_peak_screen.dart';
 
 class HistorialScreen extends ConsumerWidget {
   const HistorialScreen({super.key});
@@ -51,7 +52,24 @@ class _CoachAthletesView extends ConsumerWidget {
                 title: Text(athlete.nombreCompleto),
                 subtitle:
                     Text('${athlete.categoria} - ${athlete.perfilDeportivo}'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.terrain_rounded, color: Color(0xFF8B5CF6)),
+                      tooltip: 'Ver Axon Peak',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AxonPeakScreen(athleteProfile: athlete),
+                          ),
+                        );
+                      },
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
                 onTap: () {
                   Navigator.push(
                     context,

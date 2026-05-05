@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/axon_peak_config_model.dart';
 import '../data/models/training_block_model.dart';
@@ -10,6 +12,11 @@ final axonPeakConfigProvider =
         (ref) {
   final userId = ref.watch(currentUserIdProvider);
   return AxonPeakNotifier(userId);
+});
+
+final axonPeakConfigByAthleteProvider = StateNotifierProvider.family<
+    AxonPeakNotifier, AsyncValue<AxonPeakConfigModel?>, String>((ref, athleteId) {
+  return AxonPeakNotifier(athleteId);
 });
 
 class AxonPeakNotifier
@@ -47,9 +54,54 @@ class AxonPeakNotifier
 
     try {
       final config = _box.values.where((c) => c.userId == userId).firstOrNull;
-      state = AsyncValue.data(config);
+      if (config != null) {
+        state = AsyncValue.data(config);
+      } else {
+        // Si no está local, intentamos bajarlo de Firebase
+        await pullFromFirebase();
+      }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> pullFromFirebase() async {
+    if (userId == null) {
+      state = const AsyncValue.data(null);
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('axon_peak_configs')
+          .doc(userId)
+          .get();
+      if (doc.exists && doc.data() != null) {
+        final config = AxonPeakConfigModel.fromFirebase(doc.data()!);
+        await _box.put(config.id, config);
+        state = AsyncValue.data(config);
+      } else {
+        // No hay config en Firebase → usuario nuevo, mostrar wizard
+        state = const AsyncValue.data(null);
+      }
+    } catch (e) {
+      debugPrint('❌ [AxonPeak] Error bajando config de Firebase: $e');
+      // Ante un error de red, mostramos el wizard en lugar de colgar
+      state = const AsyncValue.data(null);
+    }
+  }
+
+  Future<void> syncToFirebase() async {
+    if (userId == null) return;
+    final config = state.value;
+    if (config == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('axon_peak_configs')
+          .doc(userId)
+          .set(config.toFirebase());
+    } catch (e) {
+      debugPrint('❌ [AxonPeak] Error sincronizando a Firebase: $e');
     }
   }
 
@@ -201,6 +253,7 @@ class AxonPeakNotifier
 
       await _box.put(config.id, config);
       state = AsyncValue.data(config);
+      await syncToFirebase();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -273,6 +326,7 @@ class AxonPeakNotifier
 
     await currentConfig.save();
     state = AsyncValue.data(currentConfig);
+    await syncToFirebase();
   }
   
   Future<void> updateVMC(int blockIndex, String exercise, int weekIndex, double vmc) async {
@@ -292,6 +346,7 @@ class AxonPeakNotifier
               
               await currentConfig.save();
               state = AsyncValue.data(currentConfig);
+              await syncToFirebase();
           }
       }
   }
@@ -302,6 +357,7 @@ class AxonPeakNotifier
       config.isFreeFlow = isFree;
       await _box.put(config.id, config);
       state = AsyncValue.data(config);
+      await syncToFirebase();
     }
   }
 
@@ -365,6 +421,7 @@ class AxonPeakNotifier
 
     await _box.put(config.id, config);
     state = AsyncValue.data(config);
+    await syncToFirebase();
     return recommendations;
   }
   
@@ -424,6 +481,7 @@ class AxonPeakNotifier
     // Forzar recarga desde disco para asegurar que la UI vea la nueva instancia de datos
     final freshConfig = _box.get(config.id);
     state = AsyncValue.data(freshConfig);
+    await syncToFirebase();
   }
 
   Future<void> resetProgression() async {

@@ -11,7 +11,6 @@ import 'data/models/session_model.dart';
 import 'data/models/gym_exercise_model.dart';
 import 'data/models/tech_exercise_model.dart';
 import 'data/models/user_profile_model.dart';
-import 'data/models/axon_analysis_model.dart';
 import 'data/models/axon_peak_config_model.dart';
 import 'data/models/training_block_model.dart';
 import 'ui/screens/main_screen.dart';
@@ -56,7 +55,6 @@ void main() async {
     Hive.registerAdapter(GymExerciseModelAdapter());
     Hive.registerAdapter(TechExerciseModelAdapter());
     Hive.registerAdapter(UserProfileModelAdapter());
-    Hive.registerAdapter(AxonAnalysisModelAdapter());
     Hive.registerAdapter(TrainingBlockModelAdapter());
     Hive.registerAdapter(AxonPeakConfigModelAdapter());
 
@@ -64,8 +62,6 @@ void main() async {
     await Hive.openBox<SessionModel>('sessions_box');
     // Open Hive box for profiles
     await Hive.openBox<UserProfileModel>('user_profiles_box');
-    // Open Hive box for Laboratorio Axon
-    await Hive.openBox<AxonAnalysisModel>('axon_analysis_box');
     // Nueva caja para persistencia de Auth (separada de sesiones)
     await Hive.openBox('auth_box');
     // Open Hive box for Axon Peak config
@@ -167,31 +163,18 @@ class _ProfileGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Ahora ref.watch está en el nivel superior del build, como debe ser
     final profileState = ref.watch(userProfileProvider);
 
     return profileState.when(
-      data: (UserProfileModel? profile) {
-        if (profile == null) {
-          debugPrint(
-              '👤 [_ProfileGate] Usuario logueado pero SIN PERFIL -> CompleteProfileScreen');
-          return const CompleteProfileScreen();
-        }
-        debugPrint('✅ [_ProfileGate] Usuario y Perfil listos -> MainScreen');
-        return const MainScreen();
-      },
-      loading: () {
-        debugPrint('⏳ [_ProfileGate] Cargando perfil del usuario...');
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
-      },
-      error: (e, st) {
-        debugPrint('❌ [_ProfileGate] Error cargando perfil: $e');
-        return Scaffold(
-          body: Center(child: Text('Error loading profile: $e')),
-        );
-      },
+      data: (profile) => profile == null
+          ? const CompleteProfileScreen()
+          : const MainScreen(),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, st) => Scaffold(
+        body: Center(child: Text('Error: $e')),
+      ),
     );
   }
 }

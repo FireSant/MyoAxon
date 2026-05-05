@@ -6,7 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../config/app_theme.dart';
 import '../screens/profile_screen.dart';
-import '../screens/laboratorio_axon_screen.dart';
+import '../screens/axon_vbt_screen.dart';
 import '../screens/axon_peak_screen.dart';
 
 class AthleteDrawer extends ConsumerWidget {
@@ -48,35 +48,18 @@ class AthleteDrawer extends ConsumerWidget {
 
                 const Divider(height: 1),
 
-                // Laboratorio Axon
+                // Axon VBT
                 ListTile(
                   leading: Icon(Icons.biotech_rounded,
                       color: Theme.of(context).primaryColor),
-                  title: const Text('Laboratorio Axon'),
+                  title: const Text('Axon VBT'),
                   subtitle: const Text('VBT · RSI · Análisis en tiempo real'),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0284C7).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'NUEVO',
-                      style: TextStyle(
-                        color: Color(0xFF0284C7),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const LaboratorioAxonScreen(),
+                  builder: (_) => const AxonVBTScreen(),
                       ),
                     );
                   },
@@ -90,23 +73,6 @@ class AthleteDrawer extends ConsumerWidget {
                       color: Theme.of(context).primaryColor),
                   title: const Text('Axon Peak'),
                   subtitle: const Text('Periodización y Efecto Dominó'),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'PRO',
-                      style: TextStyle(
-                        color: Color(0xFF8B5CF6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
