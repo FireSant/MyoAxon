@@ -19,16 +19,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _mejorMarcaController = TextEditingController();
   final _competenciaController = TextEditingController();
   final _perfilController = TextEditingController();
-  final _coachIdController = TextEditingController();
 
   DateTime _fechaNacimiento =
       DateTime.now().subtract(const Duration(days: 365 * 20));
   DateTime _fechaMejorMarca = DateTime.now();
   String _sexo = 'Masculino';
-  String _rol = 'atleta';
 
   final List<String> _sexoOptions = ['Masculino', 'Femenino', 'Otro'];
-  final List<String> _rolOptions = ['atleta', 'entrenador'];
 
   @override
   void dispose() {
@@ -36,7 +33,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     _mejorMarcaController.dispose();
     _competenciaController.dispose();
     _perfilController.dispose();
-    _coachIdController.dispose();
     super.dispose();
   }
 
@@ -75,8 +71,8 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       fechaMejorMarca: _fechaMejorMarca,
       competenciaObjetivo: _competenciaController.text,
       categoria: UserProfileModel.calcularCategoria(_fechaNacimiento),
-      rol: _rol,
-      coachId: _rol == 'atleta' ? _coachIdController.text : '',
+      rol: 'atleta',
+      coachId: '',
     );
 
     await ref.read(userProfileProvider.notifier).saveAndSyncProfile(profile);
@@ -106,29 +102,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         val == null || val.isEmpty ? 'Requerido' : null,
                   ),
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: _rol,
-                    decoration: const InputDecoration(
-                      labelText: 'Rol',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                    ),
-                    items: _rolOptions
-                        .map((r) => DropdownMenuItem(
-                            value: r, child: Text(r.toUpperCase())))
-                        .toList(),
-                    onChanged: (val) => setState(() => _rol = val!),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_rol == 'atleta') ...[
-                    TextFormField(
-                      controller: _coachIdController,
-                      decoration: const InputDecoration(
-                        labelText: 'ID del Entrenador (Opcional)',
-                        prefixIcon: Icon(Icons.sports),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   _buildDateSelector(
                     'Fecha de Nacimiento',
                     _fechaNacimiento,

@@ -2,7 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 import '../data/models/session_model.dart';
+import '../data/models/user_profile_model.dart';
+import '../providers/user_profile_provider.dart';
 
 // Stream del estado de autenticación
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -72,6 +75,32 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
       // Doble Persistencia: Guardar UID en caja dedicada
       await Hive.box('auth_box').put('current_uid', credential.user!.uid);
 
+      // Crear perfil de usuario con código de vinculación (solo para atletas por defecto)
+      final uid = credential.user!.uid;
+      final linkCode = const Uuid().v4().substring(0, 6).toUpperCase();
+      final profile = UserProfileModel(
+        uid: uid,
+        nombreCompleto: '',
+        fechaNacimiento: DateTime.now(),
+        sexo: '',
+        perfilDeportivo: '',
+        mejorMarca: '',
+        fechaMejorMarca: DateTime.now(),
+        competenciaObjetivo: '',
+        categoria: '',
+        rol: 'atleta',
+        coachId: '',
+        nombreCoach: '',
+        especialidadCoach: '',
+        institucionCoach: '',
+        redSocialCoach: null,
+        linkCode: linkCode,
+        isSynced: false,
+      );
+      // Guardar en Hive usando el repositorio de perfiles
+      final repo = ref.read(userProfileRepositoryProvider);
+      await repo.saveProfile(profile);
+
       // Limpieza de bandera vieja
       await Hive.box<SessionModel>('sessions_box')
           .delete('auth_persistent_flag');
@@ -88,6 +117,23 @@ class AuthNotifier extends Notifier<AsyncValue<User?>> {
     await Hive.box('auth_box').delete('current_uid');
     await FirebaseAuth.instance.signOut();
     state = const AsyncValue.data(null);
+  }
+
+  /// Envía un correo de restablecimiento de contraseña
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      debugPrint('📧 [Auth] Enviando correo de restablecimiento a: $email');
+      
+      // Firebase envía el correo independientemente de si el email existe o no (por seguridad)
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+      
+      debugPrint('✅ [Auth] Solicitud de restablecimiento procesada para: $email');
+    } catch (e) {
+      debugPrint('❌ [Auth] Error al enviar correo: $e');
+      // No lanzamos error para evitar revelar si el email existe o no
+      // Firebase maneja la seguridad por defecto
+      throw 'Error al enviar el correo. Verifica tu conexión e intenta nuevamente.';
+    }
   }
 }
 

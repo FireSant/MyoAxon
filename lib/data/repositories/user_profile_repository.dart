@@ -18,6 +18,15 @@ class UserProfileRepository {
     return _box.get(uid);
   }
 
+  // Obtener perfil por código de vinculación (linkCode)
+  Future<UserProfileModel?> getProfileByLinkCode(String linkCode) async {
+    try {
+      final all = _box.values.where((p) => p.linkCode == linkCode);
+      if (all.isNotEmpty) return all.first;
+    } catch (_) {}
+    return null;
+  }
+
   // Marcar como sincronizado
   Future<void> markSynced(String uid) async {
     final profile = _box.get(uid);

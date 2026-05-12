@@ -30,7 +30,7 @@ class AthleteDrawer extends ConsumerWidget {
                   builder: (context, ref, child) {
                     final theme = Theme.of(context);
                     return ListTile(
-                      leading: Icon(Icons.person, color: theme.primaryColor),
+                      leading: Icon(Icons.person, color: theme.colorScheme.onSurface),
                       title: const Text('Mi Perfil'),
                       subtitle: const Text('Editar información personal'),
                       onTap: () {
@@ -46,12 +46,11 @@ class AthleteDrawer extends ConsumerWidget {
                   },
                 ),
 
-                const Divider(height: 1),
 
                 // Axon VBT
                 ListTile(
                   leading: Icon(Icons.biotech_rounded,
-                      color: Theme.of(context).primaryColor),
+                      color: Theme.of(context).colorScheme.onSurface),
                   title: const Text('Axon VBT'),
                   subtitle: const Text('VBT · RSI · Análisis en tiempo real'),
                   onTap: () {
@@ -59,18 +58,17 @@ class AthleteDrawer extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                  builder: (_) => const AxonVBTScreen(),
+                        builder: (_) => const AxonVBTScreen(),
                       ),
                     );
                   },
                 ),
 
-                const Divider(height: 1),
 
                 // Axon Peak
                 ListTile(
                   leading: Icon(Icons.terrain_rounded,
-                      color: Theme.of(context).primaryColor),
+                      color: Theme.of(context).colorScheme.onSurface),
                   title: const Text('Axon Peak'),
                   subtitle: const Text('Periodización y Efecto Dominó'),
                   onTap: () {
@@ -84,7 +82,10 @@ class AthleteDrawer extends ConsumerWidget {
                   },
                 ),
 
-                const Divider(height: 1),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(),
+                ),
 
                 // Sincronización
                 Consumer(
@@ -95,7 +96,7 @@ class AthleteDrawer extends ConsumerWidget {
                     final theme = Theme.of(context);
 
                     return ListTile(
-                      leading: Icon(Icons.cloud, color: theme.primaryColor),
+                      leading: Icon(Icons.cloud, color: theme.colorScheme.onSurface),
                       title: const Text('Sincronización'),
                       subtitle: Text(
                         unsyncedCount > 0
@@ -105,7 +106,6 @@ class AthleteDrawer extends ConsumerWidget {
                           color: unsyncedCount > 0
                               ? AppTheme.accentAmber
                               : Colors.green,
-                          fontSize: 12,
                         ),
                       ),
                       onTap: () {
@@ -146,7 +146,7 @@ class AthleteDrawer extends ConsumerWidget {
               }
 
               return ListTile(
-                leading: Icon(themeIcon, color: Theme.of(context).primaryColor),
+                leading: Icon(themeIcon, color: Theme.of(context).colorScheme.onSurface),
                 title: Text(themeText),
                 subtitle: Text(themeSubtitle),
                 onTap: () {
@@ -168,17 +168,22 @@ class AthleteDrawer extends ConsumerWidget {
             },
           ),
 
-          const Divider(height: 1),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Divider(),
+          ),
 
           // Pie: Cerrar Sesión
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Cerrar Sesión'),
+            subtitle: const Text('Salir de la cuenta actual'),
             onTap: () async {
               Navigator.pop(context);
               await ref.read(authNotifierProvider.notifier).signOut();
             },
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -188,7 +193,9 @@ class AthleteDrawer extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final theme = Theme.of(context);
 
-    return DrawerHeader(
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 16, 16, 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,

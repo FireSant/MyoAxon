@@ -18,6 +18,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _isRegisterMode = false;
   String? _errorMessage;
+  bool _isResettingPassword = false;
+  String? _resetMessage;
 
   @override
   void dispose() {
@@ -31,6 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _resetMessage = null;
     });
 
     try {
@@ -52,6 +55,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _resetMessage = 'Por favor ingresa un email válido primero.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isResettingPassword = true;
+      _resetMessage = null;
+      _errorMessage = null;
+    });
+
+    try {
+      final authNotifier = ref.read(authNotifierProvider.notifier);
+      await authNotifier.sendPasswordResetEmail(email);
+      setState(() {
+        _resetMessage =
+            'Si el email está registrado, recibirás un correo de restablecimiento. Revisa tu bandeja de entrada y carpeta de spam.';
+      });
+    } catch (e) {
+      setState(() {
+        // Mostrar el error pero sin revelar detalles específicos de Firebase
+        _resetMessage = 'Error: ${e.toString().replaceAll('Exception: ', '')}';
+      });
+    } finally {
+      if (mounted) setState(() => _isResettingPassword = false);
     }
   }
 
@@ -148,6 +183,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
 
+                // Forgot password (only in login mode)
+                if (!_isRegisterMode) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isResettingPassword ? null : _resetPassword,
+                      child: _isResettingPassword
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.grey),
+                            )
+                          : const Text('¿Olvidaste tu contraseña?'),
+                    ),
+                  ),
+                  if (_resetMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                      child: Text(
+                        _resetMessage!,
+                        style: TextStyle(
+                          color: _resetMessage!.contains('enviado')
+                              ? Colors.green
+                              : Colors.red,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+
                 // Error message
                 if (_errorMessage != null)
                   Padding(
@@ -181,20 +248,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Toggle register/login
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isRegisterMode = !_isRegisterMode;
-                      _errorMessage = null;
-                    });
-                  },
-                  child: Text(
-                    _isRegisterMode
-                        ? '¿Ya tienes cuenta? Iniciar sesión'
-                        : '¿No tienes cuenta? Regístrate',
+                  // Toggle register/login
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isRegisterMode = !_isRegisterMode;
+                        _errorMessage = null;
+                        _resetMessage = null;
+                      });
+                    },
+                    child: Text(
+                      _isRegisterMode
+                          ? '¿Ya tienes cuenta? Iniciar sesión'
+                          : '¿No tienes cuenta? Regístrate',
+                    ),
                   ),
-                ),
+                  // En modo registro ya no se solicita rol ni datos extra; solo correo y contraseña.
               ],
             ),
           ),

@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/rendering.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:gal/gal.dart';
 import '../../providers/vbt_analysis_provider.dart';
 import '../../data/models/vbt_analysis_session.dart';
 import '../widgets/stepper_input_card.dart';
@@ -72,8 +73,14 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
         );
         return;
       }
+      if (vbtState.videoPath == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debes seleccionar un video primero')),
+        );
+        return;
+      }
     }
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       setState(() => _currentStep++);
     }
   }
@@ -165,15 +172,57 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
                         ),
                         onPressed: () async {
                           try {
+                            // 1. Guardar en galería (Recientes) primero
+                            bool hasAccess = await Gal.hasAccess();
+                            if (!hasAccess) {
+                              hasAccess = await Gal.requestAccess();
+                              if (!hasAccess) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Permiso de galería denegado')),
+                                  );
+                                }
+                                return;
+                              }
+                            }
+                            final timestamp =
+                                DateTime.now().millisecondsSinceEpoch;
+                            await Gal.putImageBytes(
+                              imageBytes,
+                              name: 'myoaxon_results_$timestamp',
+                              album: 'MyoAxon',
+                            );
+
+                            // 2. Guardar en archivo temporal para compartir
                             final tempDir = await getTemporaryDirectory();
                             final file = File(
-                                '${tempDir.path}/axon_results_${DateTime.now().millisecondsSinceEpoch}.png');
-                            await file.writeAsBytes(imageBytes, flush: true);
-                            // No esperamos el resultado para evitar LateInitializationError en algunos drivers de Android
-                            Share.shareXFiles([XFile(file.path)],
-                                text: 'Mis resultados de MyoAxon ⚡');
+                                '${tempDir.path}/myoaxon_results_$timestamp.png');
+                            await file.writeAsBytes(imageBytes);
+
+                            final xFile = XFile(file.path);
+
+                            await Share.shareXFiles(
+                              [xFile],
+                              text: 'Mis resultados de MyoAxon ⚡',
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Imagen guardada en Galería (Recientes) y compartida')),
+                              );
+                            }
                           } catch (e) {
                             debugPrint('Error sharing: $e');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Error al compartir: $e')),
+                              );
+                            }
                           }
                         },
                         icon: const Icon(Icons.share),
@@ -224,25 +273,30 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
       }
     } else {
       try {
-        final directory = Directory('/storage/emulated/0/Download');
-        if (await directory.exists()) {
-          final file = File(
-              '${directory.path}/axon_vbt_${DateTime.now().millisecondsSinceEpoch}.png');
-          await file.writeAsBytes(bytes);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Imagen guardada en Descargas')));
+        // Verificar y solicitar permiso de galería
+        bool hasAccess = await Gal.hasAccess();
+        if (!hasAccess) {
+          hasAccess = await Gal.requestAccess();
+          if (!hasAccess) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Permiso de galería denegado')),
+              );
+            }
+            return;
           }
-        } else {
-          // Fallback a path_provider si no existe la ruta directa
-          final tempDir = await getTemporaryDirectory();
-          final file = File('${tempDir.path}/axon_results.png');
-          await file.writeAsBytes(bytes);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:
-                    Text('Imagen preparada. Usa Compartir para guardar.')));
-          }
+        }
+        // Guardar imagen en galería (aparece en Recientes)
+        await Gal.putImageBytes(
+          bytes,
+          name: 'axon_vbt_${DateTime.now().millisecondsSinceEpoch}',
+          album: 'MyoAxon',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Imagen guardada en Galería (Recientes)')),
+          );
         }
       } catch (e) {
         if (mounted) {
@@ -272,9 +326,15 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
           if (_currentStep > 0)
             IconButton(
               icon: const Icon(Icons.refresh),
+              tooltip: 'Reiniciar sesión',
               onPressed: () {
                 vbtNotifier.resetSession();
-                setState(() => _currentStep = 0);
+                _controller?.dispose();
+                _controller = null;
+                setState(() {
+                  _currentStep = 0;
+                  _isVideoLoading = false;
+                });
               },
             ),
         ],
@@ -285,7 +345,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
             Column(
               children: [
                 StepperInputCard(
-                  label: 'Paso ${_currentStep + 1}/3',
+                  label: 'Paso ${_currentStep + 1}/2',
                   value: _currentStep + 1,
                   onDecrement: _back,
                   onIncrement: _next,
@@ -315,43 +375,10 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
       case 0:
         return _buildStepParams(vbtState, vbtNotifier);
       case 1:
-        return _buildStepMedia(vbtState, vbtNotifier);
-      case 2:
         return _buildStepAnalysis(vbtState, vbtNotifier);
       default:
         return const SizedBox();
     }
-  }
-
-  // --- PASO 1: MEDIA ---
-  Widget _buildStepMedia(vbtState, vbtNotifier) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.movie_filter_outlined,
-            size: 100, color: Colors.blueGrey),
-        const SizedBox(height: 24),
-        const Text(
-          'Selecciona el video del levantamiento',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 32),
-        ElevatedButton.icon(
-          onPressed: () async {
-            await vbtNotifier.pickVideo();
-            if (ref.read(vbtAnalysisProvider).videoPath != null) {
-              _next();
-              _initVideo(ref.read(vbtAnalysisProvider).videoPath!);
-            }
-          },
-          icon: const Icon(Icons.video_library),
-          label: const Text('ABRIR GALERÍA'),
-          style: ElevatedButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
-        ),
-      ],
-    );
   }
 
   // --- PASO 2: ANÁLISIS ---
@@ -415,27 +442,6 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
                   ),
                 ),
               ),
-              // Technical OSD Overlay (Bottom Right - Info)
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'AXON_CORE_V0.6.2',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 9,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -444,28 +450,10 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
 
     final controlsAndListWidget = Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('FPS del video:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            DropdownButton<double>(
-              value: vbtState.fps,
-              items: [30.0, 60.0, 120.0, 240.0].map((fps) {
-                return DropdownMenuItem(
-                    value: fps, child: Text('${fps.toInt()}'));
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) vbtNotifier.setFps(val);
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
         FrameControlPanel(
-          fps: vbtState.fps,
           controller: _controller!,
           isMarkingStart: vbtState.isMarkingStart,
+          fps: vbtState.fps,
           onMarkStart: (frame) {
             _lastMarkedStart = frame;
             vbtNotifier.toggleMarkingMode();
@@ -522,15 +510,15 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
           },
         ),
         const SizedBox(height: 32),
-        if (vbtState.reps.isNotEmpty) _buildSummarySection(vbtState),
+        if (vbtState.reps.isNotEmpty) _buildSummarySection(context, vbtState),
         if (vbtState.reps.isNotEmpty) const SizedBox(height: 24),
         if (vbtState.reps.isNotEmpty)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _shareResults,
-              icon: const Icon(Icons.share),
-              label: const Text('COMPARTIR RESULTADOS'),
+              icon: const Icon(Icons.visibility),
+              label: const Text('Ver informe completo'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.blue,
@@ -564,7 +552,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
     );
   }
 
-  // --- PASO 1: PARÁMETROS ---
+  // --- PASO 1: PARÁMETROS + MEDIA ---
   Widget _buildStepParams(vbtState, vbtNotifier) {
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -585,21 +573,35 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
             onChanged: (val) => vbtNotifier.setBodyPart(val!),
           ),
           const SizedBox(height: 24),
-          DropdownButtonFormField<String>(
-            initialValue: vbtState.exerciseType,
-            decoration: const InputDecoration(
-                labelText: 'Ejercicio',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.fitness_center)),
-            items: [
-              'Sentadilla',
-              'Press de Banca',
-              'Peso Muerto',
-              'Press Militar',
-              'Remo'
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (val) => vbtNotifier.setExercise(val!),
-          ),
+          Builder(builder: (context) {
+            final isLowerBody = vbtState.bodyPart == 'Tren Inferior';
+            final List<String> exerciseOptions = isLowerBody
+                ? ['Sentadilla', 'Peso Muerto']
+                : ['Press de Banca', 'Press Militar', 'Remo'];
+
+            String selectedExercise = vbtState.exerciseType;
+            if (!exerciseOptions.contains(selectedExercise)) {
+              selectedExercise = exerciseOptions.first;
+              Future.microtask(() {
+                vbtNotifier.setExercise(selectedExercise);
+              });
+            }
+
+            return DropdownButtonFormField<String>(
+              key: ValueKey('exercise_${vbtState.bodyPart}'),
+              initialValue: selectedExercise,
+              decoration: const InputDecoration(
+                  labelText: 'Ejercicio',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.fitness_center)),
+              items: exerciseOptions
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) vbtNotifier.setExercise(val);
+              },
+            );
+          }),
           const SizedBox(height: 24),
           TextFormField(
             controller: _pesoController,
@@ -624,28 +626,62 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
             },
           ),
           const SizedBox(height: 24),
-          TextFormField(
-            controller: _vmcController,
-            decoration: const InputDecoration(
-              labelText: 'VMC Objetivo (m/s)',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.speed),
-            ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-              TextInputFormatter.withFunction((oldValue, newValue) {
-                return TextEditingValue(
-                  text: newValue.text.replaceAll(',', '.'),
-                  selection: newValue.selection,
+          Builder(builder: (context) {
+            final isLowerBody = vbtState.bodyPart == 'Tren Inferior';
+            final List<Map<String, dynamic>> vmcOptions = isLowerBody
+                ? [
+                    {'value': 1.30, 'label': '1.30 m/s - Velocidad Máxima'},
+                    {'value': 1.10, 'label': '1.10 m/s - Velocidad - Fuerza'},
+                    {'value': 0.80, 'label': '0.80 m/s - Fuerza - Velocidad'},
+                    {
+                      'value': 0.60,
+                      'label': '0.60 m/s - Fuerza Submáxima - Hipertrofia'
+                    },
+                    {'value': 0.30, 'label': '0.30 m/s - Fuerza Máxima'},
+                  ]
+                : [
+                    {'value': 1.10, 'label': '1.10 m/s - Velocidad Máxima'},
+                    {'value': 0.80, 'label': '0.80 m/s - Velocidad - Fuerza'},
+                    {'value': 0.60, 'label': '0.60 m/s - Fuerza - Velocidad'},
+                    {
+                      'value': 0.41,
+                      'label': '0.41 m/s - Fuerza Submáxima - Hipertrofia'
+                    },
+                    {'value': 0.17, 'label': '0.17 m/s - Fuerza Máxima'},
+                  ];
+
+            double selectedVmc = vbtState.targetVmc;
+            if (!vmcOptions.any((opt) => opt['value'] == selectedVmc)) {
+              selectedVmc = vmcOptions.reduce((a, b) =>
+                  (a['value'] - vbtState.targetVmc).abs() <
+                          (b['value'] - vbtState.targetVmc).abs()
+                      ? a
+                      : b)['value'];
+              Future.microtask(() {
+                vbtNotifier.setTargetVmc(selectedVmc);
+              });
+            }
+
+            return DropdownButtonFormField<double>(
+              key: ValueKey(vbtState.bodyPart),
+              initialValue: selectedVmc,
+              decoration: const InputDecoration(
+                labelText: 'VMC Objetivo (m/s)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.speed),
+              ),
+              items: vmcOptions.map((opt) {
+                return DropdownMenuItem<double>(
+                  value: opt['value'],
+                  child:
+                      Text(opt['label'], style: const TextStyle(fontSize: 14)),
                 );
-              }),
-            ],
-            onChanged: (val) {
-              final parsed = double.tryParse(val);
-              if (parsed != null) vbtNotifier.setTargetVmc(parsed);
-            },
-          ),
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) vbtNotifier.setTargetVmc(val);
+              },
+            );
+          }),
           const SizedBox(height: 24),
           TextFormField(
             controller: _romController,
@@ -669,12 +705,63 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
               if (parsed != null) vbtNotifier.setRom(parsed);
             },
           ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 16),
+          const Text('Selección de Video',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                    vbtState.videoPath == null
+                        ? Icons.movie_filter_outlined
+                        : Icons.check_circle_outline,
+                    size: 80,
+                    color: vbtState.videoPath == null
+                        ? Colors.blueGrey
+                        : Colors.green),
+                const SizedBox(height: 16),
+                if (vbtState.videoPath != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Video: ${vbtState.videoPath!.split('/').last}',
+                      style: const TextStyle(fontSize: 14),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await vbtNotifier.pickVideo();
+                    if (ref.read(vbtAnalysisProvider).videoPath != null) {
+                      _next();
+                      _initVideo(ref.read(vbtAnalysisProvider).videoPath!);
+                    }
+                  },
+                  icon: const Icon(Icons.video_library),
+                  label: Text(vbtState.videoPath == null
+                      ? 'ABRIR GALERÍA'
+                      : 'CAMBIAR VIDEO'),
+                  style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildSummarySection(VBTAnalysisSession vbtState) {
+  Widget _buildSummarySection(
+      BuildContext context, VBTAnalysisSession vbtState) {
     final bestVmc = vbtState.bestVmc;
     final variation = vbtState.speedVariation;
     final displayVariation = variation.abs();
@@ -686,6 +773,8 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
       variationColor = Colors.red;
     }
 
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Container(
       decoration: BoxDecoration(
         color: variationColor.withValues(alpha: 0.1),
@@ -696,69 +785,71 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('RESUMEN DE SERIE',
+          Text('RESUMEN DE SERIE',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2)),
+                  letterSpacing: 1.2,
+                  color: textColor)),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Velocidad Mejor:'),
+              Text('Velocidad Mejor:', style: TextStyle(color: textColor)),
               Text('${bestVmc.toStringAsFixed(2)} m/s',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white)),
+                      color: textColor)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Velocidad Media:'),
+              Text('Velocidad Media:', style: TextStyle(color: textColor)),
               Text('${vbtState.avgVmc.toStringAsFixed(2)} m/s',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white)),
+                      color: textColor)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Velocidad Mínima:'),
+              Text('Velocidad Mínima:', style: TextStyle(color: textColor)),
               Text('${vbtState.minVmc.toStringAsFixed(2)} m/s',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white)),
+                      color: textColor)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Pérdida de Velocidad:'),
+              Text('Pérdida de Velocidad:', style: TextStyle(color: textColor)),
               Text('${displayVariation.toStringAsFixed(1)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white)),
+                      color: textColor)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Coef. de Variación (CV):'),
+              Text('Coef. de Variación (CV):',
+                  style: TextStyle(color: textColor)),
               Text('${vbtState.coeficienteVariacion.toStringAsFixed(1)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.white)),
+                      color: textColor)),
             ],
           ),
         ],
@@ -977,8 +1068,16 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
           ),
           const SizedBox(height: 32),
           const Center(
-              child: Text('Generado con Axon VBT - Análisis cinemático',
-                  style: TextStyle(color: Colors.white38, fontSize: 18))),
+              child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Generado con Axon VBT - Análisis cinemático',
+                  style: TextStyle(color: Colors.white38, fontSize: 18)),
+              SizedBox(height: 4),
+              Text('v0.6.6+1',
+                  style: TextStyle(color: Colors.white38, fontSize: 14)),
+            ],
+          )),
         ],
       ),
     );
@@ -1035,39 +1134,39 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
                 bottomTitles: AxisTitles(
                   axisNameWidget: const Text('REPETICIONES',
                       style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
+                          color: Colors.white,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  axisNameSize: 24,
+                  axisNameSize: 28,
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 32,
+                    reservedSize: 36,
                     getTitlesWidget: (value, meta) => Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text('${value.toInt() + 1}',
                           style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
+                              color: Colors.white,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
                 leftTitles: AxisTitles(
-                  axisNameWidget: const Text('v/s',
+                  axisNameWidget: const Text('m/s',
                       style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
+                          color: Colors.white,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  axisNameSize: 24,
+                  axisNameSize: 28,
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 40,
+                    reservedSize: 44,
                     interval: 0.3,
                     getTitlesWidget: (value, meta) {
                       if (value < 0.1) return const SizedBox();
                       return Text(value.toStringAsFixed(1),
                           style: const TextStyle(
-                              color: Colors.white54, fontSize: 14));
+                              color: Colors.white, fontSize: 16));
                     },
                   ),
                 ),
@@ -1080,17 +1179,20 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
                 horizontalLines: [
                   HorizontalLine(
                     y: vbtState.targetVmc,
-                    color: Colors.greenAccent.withValues(alpha: 0.8),
-                    strokeWidth: 2,
-                    dashArray: [8, 4],
+                    color: Colors.greenAccent.shade400,
+                    strokeWidth: 3,
+                    dashArray: [10, 5],
                     label: HorizontalLineLabel(
                       show: true,
                       alignment: Alignment.topRight,
                       padding: const EdgeInsets.only(right: 8, bottom: 4),
                       style: const TextStyle(
                           color: Colors.greenAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(color: Colors.greenAccent, blurRadius: 8),
+                          ]),
                       labelResolver: (line) => 'OBJETIVO',
                     ),
                   ),

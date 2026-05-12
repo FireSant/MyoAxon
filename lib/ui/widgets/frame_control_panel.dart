@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 class FrameControlPanel extends StatefulWidget {
-  final double fps;
   final VideoPlayerController controller;
   final Function(int frame) onMarkStart;
   final Function(int frame) onMarkEnd;
   final bool isMarkingStart;
+  final double fps;
 
   const FrameControlPanel({
     super.key,
-    required this.fps,
     required this.controller,
     required this.onMarkStart,
     required this.onMarkEnd,
     required this.isMarkingStart,
+    required this.fps,
   });
 
   @override

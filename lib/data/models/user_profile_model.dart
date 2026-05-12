@@ -38,6 +38,20 @@ class UserProfileModel extends HiveObject {
   @HiveField(10)
   late String coachId; // ID of the coach, if 'atleta'
 
+  // Campos específicos para entrenadores
+  @HiveField(11)
+  late String nombreCoach; // Nombre del entrenador
+  @HiveField(12)
+  late String especialidadCoach; // Ej: Lanzamientos, Sprints
+  @HiveField(13)
+  late String institucionCoach; // Club o institución
+  @HiveField(14)
+  late String? redSocialCoach; // Opcional, enlace a red social
+
+  // Código de vinculación para que un atleta pueda compartir con su entrenador
+  @HiveField(15)
+  late String? linkCode;
+
   @HiveField(11)
   bool isSynced;
 
@@ -53,6 +67,11 @@ class UserProfileModel extends HiveObject {
     required this.categoria,
     required this.rol,
     required this.coachId,
+    this.nombreCoach = '',
+    this.especialidadCoach = '',
+    this.institucionCoach = '',
+    this.redSocialCoach,
+    this.linkCode,
     this.isSynced = false,
   });
 
@@ -68,6 +87,11 @@ class UserProfileModel extends HiveObject {
     String? categoria,
     String? rol,
     String? coachId,
+    String? nombreCoach,
+    String? especialidadCoach,
+    String? institucionCoach,
+    String? redSocialCoach,
+    String? linkCode,
     bool? isSynced,
   }) {
     return UserProfileModel(
@@ -82,6 +106,11 @@ class UserProfileModel extends HiveObject {
       categoria: categoria ?? this.categoria,
       rol: rol ?? this.rol,
       coachId: coachId ?? this.coachId,
+      nombreCoach: nombreCoach ?? this.nombreCoach,
+      especialidadCoach: especialidadCoach ?? this.especialidadCoach,
+      institucionCoach: institucionCoach ?? this.institucionCoach,
+      redSocialCoach: redSocialCoach ?? this.redSocialCoach,
+      linkCode: linkCode ?? this.linkCode,
       isSynced: isSynced ?? this.isSynced,
     );
   }
@@ -117,6 +146,11 @@ class UserProfileModel extends HiveObject {
       'categoria': categoria,
       'rol': rol,
       'coach_id': coachId,
+      'nombre_coach': nombreCoach,
+      'especialidad_coach': especialidadCoach,
+      'institucion_coach': institucionCoach,
+      'red_social_coach': redSocialCoach,
+      'link_code': linkCode,
     };
   }
 
@@ -136,6 +170,11 @@ class UserProfileModel extends HiveObject {
       categoria: data['categoria'] ?? '',
       rol: data['rol'] ?? 'atleta',
       coachId: data['coach_id'] ?? '',
+      nombreCoach: data['nombre_coach'] ?? '',
+      especialidadCoach: data['especialidad_coach'] ?? '',
+      institucionCoach: data['institucion_coach'] ?? '',
+      redSocialCoach: data['red_social_coach'],
+      linkCode: data['link_code'],
       isSynced: true,
     );
   }

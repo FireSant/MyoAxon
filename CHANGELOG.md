@@ -5,6 +5,33 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
+## v0.6.6+2 - 2026-05-12 🎨 UI: Optimización de Drawer
+### Correcciones y mejoras
+* **Corrección de espaciado en Drawer**: Eliminación de huecos irregulares entre el encabezado y la lista de opciones.
+* **Cabecera flexible**: Sustitución de `DrawerHeader` (con altura fija) por un `Container` dinámico que se adapta al contenido y respeta el `SafeArea` del dispositivo.
+* **Estandarización de ListTiles**:
+  - Unificación de `contentPadding` para una alineación vertical perfecta entre todos los elementos.
+  - Adición de subtítulos descriptivos a todas las opciones (incluyendo "Cerrar Sesión") para mantener la consistencia visual.
+* **Mejora en divisores**: Implementación de padding vertical en los `Divider` para evitar que el contenido se sienta apretado.
+
+## v0.6.6+1 - 2026-05-11 🎬 Axon VBT: Mejoras de UI y Correcciones
+
+### Correcciones y mejoras
+* **Eliminación de selección de FPS**: Los FPS ahora se calculan automáticamente, removiendo la opción de cambiar FPS manualmente en la interfaz.
+* **Actualización de versión en informe**: Cambio del texto de versión en el informe compartible de "Axon_core_v0.6.2" a "v0.6.6" debajo del texto "Generado con Axon VBT - Análisis cinemático".
+* **Mejora de legibilidad en gráficos**:
+  - Aumento del tamaño de letras en ejes X (repeticiones) de 16 a 18 y ejes Y (m/s) de 14 a 16.
+  - Línea de velocidad objetivo con efecto neón: color más opaco (`greenAccent.shade400`), grosor aumentado a 3, y sombra con `blurRadius: 8`.
+* **Corrección de errores**:
+  - Eliminación de método no utilizado `_mapPasswordResetError` en `auth_provider.dart`.
+  - Corrección de error `use_build_context_synchronously` en `axon_vbt_screen.dart` usando `context.mounted`.
+  - Corrección de error `StateError` en `session_provider.dart` al agregar bandera `_isDisposed`.
+* **Texto adaptativo al tema**: Modificación de `_buildSummarySection` para usar colores que se adapten automáticamente al tema claro/oscuro usando `Theme.of(context).colorScheme.onSurface`.
+* **Entrada inteligente de VMC**: Sustitución del campo de texto por un menú desplegable dinámico que muestra zonas de entrenamiento y velocidades mínimas.
+* **Filtrado dinámico de ejercicios**: El selector de ejercicios ahora se adapta automáticamente según el tren corporal seleccionado (Superior/Inferior).
+* **Auto-corrección de selección**: Implementación de lógica de sincronización que ajusta automáticamente el ejercicio y la VMC al cambiar el tren corporal para evitar estados inválidos.
+* **Botón de informe**: Cambio de texto de "COMPARTIR RESULTADOS" a "Ver informe completo" con icono de visibilidad.
+
 ## v0.6.2 - 2026-05-04 🎬 Axon VBT: Bio-Cinemática de Precisión
 
 ### Funcionamiento del Módulo
@@ -408,6 +435,6 @@ Para volver a habilitar el sistema de login completo:
 
 ---
 
-**Última actualización**: 2026-04-14
-**Versión actual**: v0.4.0 — Rutinas Compartibles & Auto-categorización
-**Estado**: Estable — Listo para exportar datos con seguridad.
+**Última actualización**: 2026-05-12
+**Versión actual**: v0.6.6+2 — UI: Optimización de Drawer
+**Estado**: Estable — Corrección de espaciados y cabecera flexible en el menú lateral.

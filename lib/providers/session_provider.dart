@@ -22,11 +22,13 @@ class SessionListNotifier extends StateNotifier<List<SessionModel>> {
   final SessionRepository _repository;
   final String? _userId;
   StreamSubscription? _boxSubscription;
+  bool _isDisposed = false;
 
   SessionListNotifier(this._repository, this._userId) : super([]) {
     _load();
     // Escuchar cambios en la caja Hive para actualizar la UI en tiempo real
     _boxSubscription = _repository.boxWatch.listen((event) {
+      if (_isDisposed) return;
       debugPrint(
           '🔄 [SessionProvider] Cambio detectado en Hive (key: ${event.key}), recargando estado');
       _load();
@@ -35,11 +37,13 @@ class SessionListNotifier extends StateNotifier<List<SessionModel>> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _boxSubscription?.cancel();
     super.dispose();
   }
 
   void _load() {
+    if (_isDisposed) return;
     state = _repository.getAllSessionsForUser(_userId);
   }
 

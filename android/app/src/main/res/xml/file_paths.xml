@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Permite acceder a los archivos en el directorio de caché de la app (getTemporaryDirectory()) -->
+    <cache-path name="my_cache" path="." />
+    <!-- Permite acceder a archivos en almacenamiento externo si es necesario -->
+    <external-path name="external_files" path="." />
+</paths>
