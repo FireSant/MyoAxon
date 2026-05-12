@@ -28,14 +28,19 @@ class UserProfileModelAdapter extends TypeAdapter<UserProfileModel> {
       categoria: fields[8] as String,
       rol: fields[9] as String,
       coachId: fields[10] as String,
-      isSynced: fields[11] as bool,
+      nombreCoach: fields[11] as String,
+      especialidadCoach: fields[12] as String,
+      institucionCoach: fields[13] as String,
+      redSocialCoach: fields[14] as String?,
+      linkCode: fields[15] as String?,
+      isSynced: fields[16] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfileModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.uid)
       ..writeByte(1)
@@ -59,6 +64,16 @@ class UserProfileModelAdapter extends TypeAdapter<UserProfileModel> {
       ..writeByte(10)
       ..write(obj.coachId)
       ..writeByte(11)
+      ..write(obj.nombreCoach)
+      ..writeByte(12)
+      ..write(obj.especialidadCoach)
+      ..writeByte(13)
+      ..write(obj.institucionCoach)
+      ..writeByte(14)
+      ..write(obj.redSocialCoach)
+      ..writeByte(15)
+      ..write(obj.linkCode)
+      ..writeByte(16)
       ..write(obj.isSynced);
   }
 

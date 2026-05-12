@@ -5,8 +5,16 @@ Se registrara lo siguiente: Primero la version y fecha. Luego: `Funcionalidades`
 
 **Tests**: Todos los tests unitarios de modelos están implementados y listos para ejecutar con `flutter test`.
 
-## v0.6.6+2 - 2026-05-12 🎨 UI: Optimización de Drawer
+## v0.6.6+2 - 2026-05-12 🎨 UI: Optimización de Drawer & Axon Peak
 ### Correcciones y mejoras
+* **Axon Peak: Reconfiguración Científica**:
+  - **Eliminación de "Free Flow"**: Se removió la opción de flujo libre para estandarizar la progresión científica obligatoria en todos los bloques.
+  - **Visualización de 1RM**: Adición de una sección en la cabecera que muestra el 1RM calculado (en kg) para cada ejercicio basado en la fórmula de Brzycki.
+  - **Cierre de Bloque Robusto**:
+    - Implementación de un botón de **CANCELAR** en el diálogo de finalización de bloque.
+    - Refactorización de la lógica del proveedor (`axon_peak_provider.dart`) para separar el análisis del cambio de estado, garantizando que el bloque solo se marque como completado tras la confirmación final del usuario.
+* **Corrección de modelos de persistencia**:
+  - Resolución de conflicto de índices Hive en `UserProfileModel` (campo `isSynced` re-indexado a 16 para evitar duplicidad con `nombreCoach`).
 * **Corrección de espaciado en Drawer**: Eliminación de huecos irregulares entre el encabezado y la lista de opciones.
 * **Cabecera flexible**: Sustitución de `DrawerHeader` (con altura fija) por un `Container` dinámico que se adapta al contenido y respeta el `SafeArea` del dispositivo.
 * **Estandarización de ListTiles**:
@@ -436,5 +444,5 @@ Para volver a habilitar el sistema de login completo:
 ---
 
 **Última actualización**: 2026-05-12
-**Versión actual**: v0.6.6+2 — UI: Optimización de Drawer
-**Estado**: Estable — Corrección de espaciados y cabecera flexible en el menú lateral.
+**Versión actual**: v0.6.6+2 — UI: Optimización de Drawer & Axon Peak
+**Estado**: Estable — Corrección de espaciados en el menú lateral y reconfiguración científica de Axon Peak.

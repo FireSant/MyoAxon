@@ -235,8 +235,6 @@ class AxonPeakNotifier
         targetDate: targetDate,
         weeksPerBlock: weeksPerBlock,
         isTaperActive: isTaperActive,
-        isFreeFlow: false,
-
         periodizationMethod: periodizationMethod,
         exerciseIncrements: exerciseIncrements,
         exercise1RM: global1RM,
@@ -291,7 +289,7 @@ class AxonPeakNotifier
           block.exercisePercentages[exercise] = weekPercents;
           block.exerciseLoads = loads;
 
-          if (!currentConfig.isFreeFlow && delta != 0) {
+          if (delta != 0) {
             for (int i = blockIndex + 1; i < blocks.length; i++) {
               final futureBlock = blocks[i];
               final futureLoads =
@@ -351,17 +349,9 @@ class AxonPeakNotifier
       }
   }
 
-  Future<void> toggleFreeFlow(bool isFree) async {
-    final config = state.value;
-    if (config != null) {
-      config.isFreeFlow = isFree;
-      await _box.put(config.id, config);
-      state = AsyncValue.data(config);
-      await syncToFirebase();
-    }
-  }
 
-  Future<Map<String, String>> completeBlockAndGetRecommendations(int blockIndex) async {
+
+  Map<String, String> getRecommendations(int blockIndex) {
     final config = state.value;
     if (config == null) return {};
 
@@ -370,9 +360,6 @@ class AxonPeakNotifier
 
     if (blockIndex >= 0 && blockIndex < blocks.length) {
       final block = blocks[blockIndex];
-      block.status = 'Completado';
-      block.endDate = DateTime.now();
-      
       final peakWeekIndex = config.weeksPerBlock - 2; // S3 en un bloque de 4 semanas
 
       // Regla de Estabilidad (2-Block Rule)
@@ -412,16 +399,7 @@ class AxonPeakNotifier
              recommendations[exercise] = "No se registró VMC en la Semana Pico (S3).";
          }
       }
-
-      if (blockIndex + 1 < blocks.length) {
-        final nextBlock = blocks[blockIndex + 1];
-        nextBlock.status = 'En curso';
-      }
     }
-
-    await _box.put(config.id, config);
-    state = AsyncValue.data(config);
-    await syncToFirebase();
     return recommendations;
   }
   
@@ -430,7 +408,20 @@ class AxonPeakNotifier
     if (config == null) return;
     
     final blocks = config.blocks;
+
+    // 1. Marcar bloque actual como completado
+    if (blockIndex >= 0 && blockIndex < blocks.length) {
+      final block = blocks[blockIndex];
+      block.status = 'Completado';
+      block.endDate = DateTime.now();
+      
+      // 2. Activar siguiente bloque si existe
+      if (blockIndex + 1 < blocks.length) {
+        blocks[blockIndex + 1].status = 'En curso';
+      }
+    }
     
+    // 3. Aplicar incrementos o repeticiones
     for (var exercise in applyIncrements.keys) {
         final shouldIncrease = applyIncrements[exercise] ?? false;
         final incPercent = config.exerciseIncrements[exercise] ?? 2.5;
@@ -439,8 +430,6 @@ class AxonPeakNotifier
         
         if (!shouldIncrease) {
             // Lógica Unificada de Repetición (Freno de Emergencia):
-            // Si el usuario rechaza el incremento, REPETIMOS el bloque retrasando toda la progresión futura.
-            // Iteramos desde el final para no perder los datos proyectados originales.
             for (int i = blocks.length - 1; i > blockIndex; i--) {
                 final futureBlock = blocks[i];
                 final prevBlock = blocks[i - 1]; 
@@ -453,8 +442,6 @@ class AxonPeakNotifier
         } else {
             // Lógica de Confirmación de Aumento
             if (config.periodizationMethod == 'Linear') {
-                // En Lineal, el 1RM base era fijo en la proyección.
-                // Si confirma, le sumamos el incremento permanentemente a todos los bloques futuros.
                 for (int i = blockIndex + 1; i < blocks.length; i++) {
                     final futureBlock = blocks[i];
                     if (futureBlock.exerciseLoads.containsKey(exercise)) {
@@ -472,13 +459,10 @@ class AxonPeakNotifier
                     }
                 }
             }
-            // En StepLoading no hace falta hacer nada al confirmar, 
-            // ya que la proyección inicial ya incluía el incremento bloque a bloque.
         }
     }
     
     await _box.put(config.id, config);
-    // Forzar recarga desde disco para asegurar que la UI vea la nueva instancia de datos
     final freshConfig = _box.get(config.id);
     state = AsyncValue.data(freshConfig);
     await syncToFirebase();

@@ -535,6 +535,27 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                             fontWeight: FontWeight.bold)),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 5,
+                  alignment: WrapAlignment.center,
+                  children: config.exercise1RM.entries.map((e) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${e.key}: ${e.value.toStringAsFixed(1)}kg',
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontSize: 12, 
+                        fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  )).toList(),
+                ),
                 const SizedBox(height: 10),
                 Text(
                   '$daysRemaining',
@@ -548,54 +569,39 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                         color: Colors.white70, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Row(
-                      children: [
-                        const Text('Free Flow',
-                            style: TextStyle(color: Colors.white)),
-                        Switch(
-                          value: config.isFreeFlow,
-                          activeThumbColor: Colors.amber,
-                          onChanged: isCoachViewing ? null : (val) {
-                            ref
-                                .read(axonPeakConfigProvider.notifier)
-                                .toggleFreeFlow(val);
-                          },
-                        ),
-                      ],
-                    ),
                     if (!isCoachViewing)
                       TextButton.icon(
                         icon: const Icon(Icons.refresh, color: Colors.white),
                         label: const Text('Reset',
                             style: TextStyle(color: Colors.white)),
                         onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('¿Romper la cadena?'),
-                            content: const Text(
-                                'Esto eliminará la progresión actual y el cálculo de 1RM global.'),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('Cancelar')),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  ref
-                                      .read(axonPeakConfigProvider.notifier)
-                                      .resetProgression();
-                                },
-                                child: const Text('Aceptar',
-                                    style: TextStyle(color: Colors.red)),
-                              )
-                            ],
-                          ),
-                        );
-                      },
-                    )
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('¿Romper la cadena?'),
+                              content: const Text(
+                                  'Esto eliminará la progresión actual y el cálculo de 1RM global.'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancelar')),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    ref
+                                        .read(axonPeakConfigProvider.notifier)
+                                        .resetProgression();
+                                  },
+                                  child: const Text('Aceptar',
+                                      style: TextStyle(color: Colors.red)),
+                                )
+                              ],
+                            ),
+                          );
+                        },
+                      )
                   ],
                 )
               ],
@@ -751,15 +757,12 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                     initialValue: loads[w].toStringAsFixed(1),
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: config.isFreeFlow
-                                          ? Colors.amber[700]
-                                          : null,
-                                      fontWeight: isCurrent
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: isCurrent
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
                                     decoration: const InputDecoration(
                                         isDense: true,
                                         contentPadding:
@@ -854,14 +857,10 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
     );
   }
 
-  Future<void> _showCompleteBlockDialog(
-      BuildContext context, int blockIndex) async {
-    // Pedir las recomendaciones del proveedor
-    final recommendations = await ref
-        .read(axonPeakConfigProvider.notifier)
-        .completeBlockAndGetRecommendations(blockIndex);
-
-    if (!context.mounted) return;
+  void _showCompleteBlockDialog(BuildContext context, int blockIndex) {
+    // Pedir las recomendaciones del proveedor (ahora es síncrono y sin efectos secundarios)
+    final recommendations =
+        ref.read(axonPeakConfigProvider.notifier).getRecommendations(blockIndex);
 
     // Mapa local para que el usuario pueda decidir qué ejercicios incrementan su 1RM global
     Map<String, bool> applyIncrements = {};
@@ -873,6 +872,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Forzar decisión
       builder: (ctx) {
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
@@ -933,6 +933,10 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
               ),
             ),
             actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('CANCELAR'),
+              ),
               ElevatedButton(
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -942,7 +946,7 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text(
-                          'Decisiones aplicadas. Siguiente bloque preparado.'),
+                          'Bloque finalizado con éxito. Decisiones aplicadas.'),
                     ));
                   }
                 },

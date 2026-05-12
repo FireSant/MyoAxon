@@ -22,7 +22,6 @@ class AxonPeakConfigModelAdapter extends TypeAdapter<AxonPeakConfigModel> {
       targetDate: fields[2] as DateTime,
       weeksPerBlock: fields[3] as int,
       isTaperActive: fields[4] as bool,
-      isFreeFlow: fields[5] as bool,
       athleteLevel: fields[8] == null ? 'Intermedio' : fields[8] as String,
       periodizationMethod:
           fields[9] == null ? 'StepLoading' : fields[9] as String,
@@ -35,7 +34,7 @@ class AxonPeakConfigModelAdapter extends TypeAdapter<AxonPeakConfigModel> {
   @override
   void write(BinaryWriter writer, AxonPeakConfigModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -46,8 +45,6 @@ class AxonPeakConfigModelAdapter extends TypeAdapter<AxonPeakConfigModel> {
       ..write(obj.weeksPerBlock)
       ..writeByte(4)
       ..write(obj.isTaperActive)
-      ..writeByte(5)
-      ..write(obj.isFreeFlow)
       ..writeByte(6)
       ..write(obj.exerciseIncrements)
       ..writeByte(7)

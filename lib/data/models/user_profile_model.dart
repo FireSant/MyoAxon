@@ -52,7 +52,7 @@ class UserProfileModel extends HiveObject {
   @HiveField(15)
   late String? linkCode;
 
-  @HiveField(11)
+  @HiveField(16)
   bool isSynced;
 
   UserProfileModel({

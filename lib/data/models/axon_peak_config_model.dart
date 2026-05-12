@@ -20,9 +20,6 @@ class AxonPeakConfigModel extends HiveObject {
   @HiveField(4)
   late bool isTaperActive;
 
-  @HiveField(5)
-  late bool isFreeFlow;
-
   @HiveField(6)
   late Map<String, double>
       exerciseIncrements; // Aumento planeado de % (ej. 2.5)
@@ -45,7 +42,6 @@ class AxonPeakConfigModel extends HiveObject {
     required this.targetDate,
     required this.weeksPerBlock,
     required this.isTaperActive,
-    required this.isFreeFlow,
     this.athleteLevel = 'Intermedio',
     this.periodizationMethod = 'StepLoading',
     Map<String, double>? exerciseIncrements,
@@ -62,7 +58,6 @@ class AxonPeakConfigModel extends HiveObject {
       'targetDate': targetDate.toIso8601String(),
       'weeksPerBlock': weeksPerBlock,
       'isTaperActive': isTaperActive,
-      'isFreeFlow': isFreeFlow,
       'athleteLevel': athleteLevel,
       'periodizationMethod': periodizationMethod,
       'exerciseIncrements': exerciseIncrements,
@@ -78,7 +73,6 @@ class AxonPeakConfigModel extends HiveObject {
       targetDate: DateTime.parse(data['targetDate']),
       weeksPerBlock: data['weeksPerBlock'] ?? 4,
       isTaperActive: data['isTaperActive'] ?? true,
-      isFreeFlow: data['isFreeFlow'] ?? false,
       athleteLevel: data['athleteLevel'] ?? 'Intermedio',
       periodizationMethod: data['periodizationMethod'] ?? 'StepLoading',
       exerciseIncrements: (data['exerciseIncrements'] as Map<String, dynamic>?)?.map(
