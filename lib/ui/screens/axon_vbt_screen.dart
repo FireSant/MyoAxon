@@ -31,7 +31,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
   late TextEditingController _romController;
   late TextEditingController _vmcController;
   late TextEditingController _pesoController;
-  final GlobalKey _shareKey = GlobalKey();
+  // _shareKey removido: ahora la captura se hace on-demand via OverlayEntry
 
   @override
   void initState() {
@@ -86,35 +86,90 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
   }
 
   Future<void> _shareResults() async {
+    // Mostrar indicador de carga mientras se captura
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
-      // Pequeño retraso para asegurar que el RepaintBoundary se haya procesado
-      await Future.delayed(const Duration(milliseconds: 100));
+      final vbtState = ref.read(vbtAnalysisProvider);
+      final bytes = await _captureShareableCard(vbtState);
 
-      final boundary = _shareKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Cerrar loading
 
-      if (boundary == null) {
-        throw 'No se pudo encontrar el área de captura.';
-      }
-
-      // Si aún necesita pintarse, esperamos un poco más
-      if (boundary.debugNeedsPaint) {
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
-
-      ui.Image image = await boundary.toImage(pixelRatio: 2.0);
-      ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData != null) {
-        final bytes = byteData.buffer.asUint8List();
+      if (bytes != null) {
         _showSharePreview(bytes);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: no se pudo generar la imagen.')),
+        );
       }
     } catch (e) {
       if (mounted) {
+        Navigator.of(context).pop(); // Cerrar loading
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error al procesar tarjeta: $e')));
       }
     }
+  }
+
+  /// Captura el widget de la tarjeta compartible de forma segura.
+  /// Monta temporalmente el widget en un OverlayEntry visible (cubierto
+  /// por una capa opaca) para garantizar que Flutter lo pinte completamente,
+  /// evitando LateInitializationError en dispositivos físicos.
+  Future<Uint8List?> _captureShareableCard(VBTAnalysisSession vbtState) async {
+    final captureKey = GlobalKey();
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            // Widget a capturar — en pantalla para que Flutter lo pinte
+            Positioned(
+              left: 0,
+              top: 0,
+              width: 1080,
+              height: 1080,
+              child: RepaintBoundary(
+                key: captureKey,
+                child: _buildShareableCard(vbtState),
+              ),
+            ),
+            // Capa opaca que cubre visualmente la tarjeta
+            Positioned.fill(
+              child: Container(color: Colors.black),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+
+    // Esperar a que el framework haga layout + paint completo
+    await WidgetsBinding.instance.endOfFrame;
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    Uint8List? result;
+    try {
+      final boundary = captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary != null) {
+        final image = await boundary.toImage(pixelRatio: 2.0);
+        final byteData =
+            await image.toByteData(format: ui.ImageByteFormat.png);
+        result = byteData?.buffer.asUint8List();
+      }
+    } finally {
+      overlayEntry.remove();
+    }
+
+    return result;
   }
 
   void _showSharePreview(Uint8List imageBytes) {
@@ -340,29 +395,17 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
         ],
       ),
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                StepperInputCard(
-                  label: 'Paso ${_currentStep + 1}/2',
-                  value: _currentStep + 1,
-                  onDecrement: _back,
-                  onIncrement: _next,
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: _buildStepContent(vbtState, vbtNotifier),
-                ),
-              ],
+            StepperInputCard(
+              label: 'Paso ${_currentStep + 1}/2',
+              value: _currentStep + 1,
+              onDecrement: _back,
+              onIncrement: _next,
             ),
-            // Widget de captura (Fuera de la pantalla para que se pinte pero no se vea)
-            Positioned(
-              left: -3000,
-              child: RepaintBoundary(
-                key: _shareKey,
-                child: _buildShareableCard(vbtState),
-              ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _buildStepContent(vbtState, vbtNotifier),
             ),
           ],
         ),

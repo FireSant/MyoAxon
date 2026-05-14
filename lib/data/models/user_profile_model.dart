@@ -32,18 +32,18 @@ class UserProfileModel extends HiveObject {
   @HiveField(8)
   late String categoria;
 
-  @HiveField(9)
+  @HiveField(9, defaultValue: 'atleta')
   late String rol; // 'atleta' o 'entrenador'
 
-  @HiveField(10)
+  @HiveField(10, defaultValue: '')
   late String coachId; // ID of the coach, if 'atleta'
 
   // Campos específicos para entrenadores
-  @HiveField(11)
+  @HiveField(17, defaultValue: '')
   late String nombreCoach; // Nombre del entrenador
-  @HiveField(12)
+  @HiveField(12, defaultValue: '')
   late String especialidadCoach; // Ej: Lanzamientos, Sprints
-  @HiveField(13)
+  @HiveField(13, defaultValue: '')
   late String institucionCoach; // Club o institución
   @HiveField(14)
   late String? redSocialCoach; // Opcional, enlace a red social
@@ -52,7 +52,7 @@ class UserProfileModel extends HiveObject {
   @HiveField(15)
   late String? linkCode;
 
-  @HiveField(16)
+  @HiveField(11, defaultValue: true)
   bool isSynced;
 
   UserProfileModel({

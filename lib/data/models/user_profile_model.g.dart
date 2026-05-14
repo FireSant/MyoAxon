@@ -26,14 +26,14 @@ class UserProfileModelAdapter extends TypeAdapter<UserProfileModel> {
       fechaMejorMarca: fields[6] as DateTime,
       competenciaObjetivo: fields[7] as String,
       categoria: fields[8] as String,
-      rol: fields[9] as String,
-      coachId: fields[10] as String,
-      nombreCoach: fields[11] as String,
-      especialidadCoach: fields[12] as String,
-      institucionCoach: fields[13] as String,
+      rol: fields[9] == null ? 'atleta' : fields[9] as String,
+      coachId: fields[10] == null ? '' : fields[10] as String,
+      nombreCoach: fields[17] == null ? '' : fields[17] as String,
+      especialidadCoach: fields[12] == null ? '' : fields[12] as String,
+      institucionCoach: fields[13] == null ? '' : fields[13] as String,
       redSocialCoach: fields[14] as String?,
       linkCode: fields[15] as String?,
-      isSynced: fields[16] as bool,
+      isSynced: fields[11] == null ? true : fields[11] as bool,
     );
   }
 
@@ -63,7 +63,7 @@ class UserProfileModelAdapter extends TypeAdapter<UserProfileModel> {
       ..write(obj.rol)
       ..writeByte(10)
       ..write(obj.coachId)
-      ..writeByte(11)
+      ..writeByte(17)
       ..write(obj.nombreCoach)
       ..writeByte(12)
       ..write(obj.especialidadCoach)
@@ -73,7 +73,7 @@ class UserProfileModelAdapter extends TypeAdapter<UserProfileModel> {
       ..write(obj.redSocialCoach)
       ..writeByte(15)
       ..write(obj.linkCode)
-      ..writeByte(16)
+      ..writeByte(11)
       ..write(obj.isSynced);
   }
 
