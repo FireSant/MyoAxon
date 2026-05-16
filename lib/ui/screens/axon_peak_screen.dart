@@ -191,10 +191,6 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'El cálculo se basará en tu 1RM estimado usando la fórmula de Brzycki.',
-            style: TextStyle(color: Colors.grey),
-          ),
           const SizedBox(height: 20),
 
           // 1. Perfil y Método
@@ -214,11 +210,9 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                       )),
                   items: const [
                     DropdownMenuItem(
-                        value: 'StepLoading',
-                        child: Text('Carga por Pasos')),
+                        value: 'StepLoading', child: Text('Carga por Pasos')),
                     DropdownMenuItem(
-                        value: 'Linear',
-                        child: Text('Lineal Tradicional')),
+                        value: 'Linear', child: Text('Lineal Tradicional')),
                   ],
                   onChanged: (val) =>
                       setState(() => _periodizationMethod = val!),
@@ -540,21 +534,23 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                   spacing: 10,
                   runSpacing: 5,
                   alignment: WrapAlignment.center,
-                  children: config.exercise1RM.entries.map((e) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${e.key}: ${e.value.toStringAsFixed(1)}kg',
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontSize: 12, 
-                        fontWeight: FontWeight.w600
-                      ),
-                    ),
-                  )).toList(),
+                  children: config.exercise1RM.entries
+                      .map((e) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${e.key}: ${e.value.toStringAsFixed(1)}kg',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ))
+                      .toList(),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -757,24 +753,27 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                     initialValue: loads[w].toStringAsFixed(1),
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: isCurrent
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isCurrent
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
                                     decoration: const InputDecoration(
                                         isDense: true,
                                         contentPadding:
                                             EdgeInsets.symmetric(vertical: 4)),
                                     onFieldSubmitted: (val) {
                                       if (isCoachViewing) return;
-                                      final normalizedVal = val.replaceAll(',', '.');
+                                      final normalizedVal =
+                                          val.replaceAll(',', '.');
                                       final newLoad =
-                                          double.tryParse(normalizedVal) ?? loads[w];
+                                          double.tryParse(normalizedVal) ??
+                                              loads[w];
                                       if (newLoad != loads[w]) {
                                         ref
-                                            .read(axonPeakConfigProvider.notifier)
+                                            .read(
+                                                axonPeakConfigProvider.notifier)
                                             .updateLoad(blockIndex, exercise, w,
                                                 newLoad);
                                       }
@@ -810,8 +809,10 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
                                       ),
                                       onChanged: (val) {
                                         if (isCoachViewing) return;
-                                        final normalizedVal = val.replaceAll(',', '.');
-                                        final vmc = double.tryParse(normalizedVal);
+                                        final normalizedVal =
+                                            val.replaceAll(',', '.');
+                                        final vmc =
+                                            double.tryParse(normalizedVal);
                                         if (vmc != null) {
                                           ref
                                               .read(axonPeakConfigProvider
@@ -859,8 +860,9 @@ class _AxonPeakScreenState extends ConsumerState<AxonPeakScreen> {
 
   void _showCompleteBlockDialog(BuildContext context, int blockIndex) {
     // Pedir las recomendaciones del proveedor (ahora es síncrono y sin efectos secundarios)
-    final recommendations =
-        ref.read(axonPeakConfigProvider.notifier).getRecommendations(blockIndex);
+    final recommendations = ref
+        .read(axonPeakConfigProvider.notifier)
+        .getRecommendations(blockIndex);
 
     // Mapa local para que el usuario pueda decidir qué ejercicios incrementan su 1RM global
     Map<String, bool> applyIncrements = {};

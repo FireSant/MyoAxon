@@ -36,9 +36,13 @@ class UserProfileRepository {
     }
   }
 
-  // Limpiar perfil local (al cerrar sesión)
-  Future<void> clearProfile() async {
-    await _box.clear();
+  // Limpiar perfil local del usuario específico (al cerrar sesión)
+  Future<void> clearProfile({String? uid}) async {
+    if (uid != null) {
+      await _box.delete(uid);
+    } else {
+      await _box.clear();
+    }
   }
 
   // Obtener de Firebase

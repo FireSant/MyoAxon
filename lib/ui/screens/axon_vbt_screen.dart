@@ -1,16 +1,15 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
-import 'dart:ui' as ui;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:flutter/rendering.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:gal/gal.dart';
+import 'package:screenshot/screenshot.dart';
+import '../../config/app_config.dart';
 import '../../providers/vbt_analysis_provider.dart';
 import '../../data/models/vbt_analysis_session.dart';
 import '../widgets/stepper_input_card.dart';
@@ -31,7 +30,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
   late TextEditingController _romController;
   late TextEditingController _vmcController;
   late TextEditingController _pesoController;
-  // _shareKey removido: ahora la captura se hace on-demand via OverlayEntry
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -86,90 +85,32 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
   }
 
   Future<void> _shareResults() async {
-    // Mostrar indicador de carga mientras se captura
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
     try {
       final vbtState = ref.read(vbtAnalysisProvider);
-      final bytes = await _captureShareableCard(vbtState);
+
+      // captureFromWidget renderiza el widget a imagen sin montarlo en el árbol.
+      // Usa dart:ui PictureRecorder internamente — funciona en todas las plataformas.
+      final bytes = await _screenshotController.captureFromWidget(
+        MediaQuery(
+          data: MediaQueryData.fromView(View.of(context)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: _buildShareableCard(vbtState),
+          ),
+        ),
+        targetSize: const Size(1080, 1080),
+        pixelRatio: 2.0,
+        delay: const Duration(milliseconds: 100),
+      );
 
       if (!mounted) return;
-      Navigator.of(context).pop(); // Cerrar loading
-
-      if (bytes != null) {
-        _showSharePreview(bytes);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: no se pudo generar la imagen.')),
-        );
-      }
+      _showSharePreview(bytes);
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Cerrar loading
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error al procesar tarjeta: $e')));
       }
     }
-  }
-
-  /// Captura el widget de la tarjeta compartible de forma segura.
-  /// Monta temporalmente el widget en un OverlayEntry visible (cubierto
-  /// por una capa opaca) para garantizar que Flutter lo pinte completamente,
-  /// evitando LateInitializationError en dispositivos físicos.
-  Future<Uint8List?> _captureShareableCard(VBTAnalysisSession vbtState) async {
-    final captureKey = GlobalKey();
-
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Material(
-        color: Colors.transparent,
-        child: Stack(
-          children: [
-            // Widget a capturar — en pantalla para que Flutter lo pinte
-            Positioned(
-              left: 0,
-              top: 0,
-              width: 1080,
-              height: 1080,
-              child: RepaintBoundary(
-                key: captureKey,
-                child: _buildShareableCard(vbtState),
-              ),
-            ),
-            // Capa opaca que cubre visualmente la tarjeta
-            Positioned.fill(
-              child: Container(color: Colors.black),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(overlayEntry);
-
-    // Esperar a que el framework haga layout + paint completo
-    await WidgetsBinding.instance.endOfFrame;
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    Uint8List? result;
-    try {
-      final boundary = captureKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary != null) {
-        final image = await boundary.toImage(pixelRatio: 2.0);
-        final byteData =
-            await image.toByteData(format: ui.ImageByteFormat.png);
-        result = byteData?.buffer.asUint8List();
-      }
-    } finally {
-      overlayEntry.remove();
-    }
-
-    return result;
   }
 
   void _showSharePreview(Uint8List imageBytes) {
@@ -934,18 +875,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
       }
     }
 
-    double pctRm = 0.0;
-    if (isLowerBody) {
-      // Polinómica Tren Inferior: -1.133x² - 42.171x + 103.38
-      pctRm = (-1.133 * math.pow(v, 2)) - (42.171 * v) + 103.38;
-    } else {
-      // Polinómica Tren Superior: -5.961x² - 56.485x + 117.09
-      pctRm = (-5.961 * math.pow(v, 2)) - (56.485 * v) + 117.09;
-    }
-
-    // Lógica de seguridad: 10% - 100%
-    if (pctRm > 100.0) pctRm = 100.0;
-    if (pctRm < 10.0) pctRm = 10.0;
+    final pctRm = AppConfig.estimatePctRMFromVMC(v, isLowerBody);
 
     String rmKg = 'N/A';
     if (vbtState.pesoKg > 0) {
@@ -955,7 +885,7 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
 
     String potenciaW = 'N/A';
     if (vbtState.pesoKg > 0) {
-      final p = vbtState.pesoKg * 9.81 * v; // F * v
+      final p = AppConfig.calculatePower(vbtState.pesoKg, v);
       potenciaW = '${p.toStringAsFixed(0)} W';
     }
 
@@ -1114,10 +1044,10 @@ class _AxonVBTScreenState extends ConsumerState<AxonVBTScreen> {
               child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Generado con Axon VBT - Análisis cinemático',
+              Text(AppConfig.reportFooter,
                   style: TextStyle(color: Colors.white38, fontSize: 18)),
               SizedBox(height: 4),
-              Text('v0.6.6+1',
+              Text(AppConfig.fullVersion,
                   style: TextStyle(color: Colors.white38, fontSize: 14)),
             ],
           )),

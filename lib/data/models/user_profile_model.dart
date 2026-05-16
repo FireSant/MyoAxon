@@ -132,6 +132,13 @@ class UserProfileModel extends HiveObject {
 
   String get categoriaCalculada => calcularCategoria(fechaNacimiento);
 
+  /// Indica si el perfil tiene los campos obligatorios del onboarding completados.
+  /// Un perfil vacío creado durante el registro NO se considera completo.
+  bool get isProfileComplete =>
+      nombreCompleto.isNotEmpty &&
+      sexo.isNotEmpty &&
+      perfilDeportivo.isNotEmpty;
+
   // Para Firebase: Serializa
   Map<String, dynamic> toFirebase() {
     return {

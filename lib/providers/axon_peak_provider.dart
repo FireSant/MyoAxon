@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../data/models/axon_peak_config_model.dart';
 import '../data/models/training_block_model.dart';
 import 'auth_provider.dart';
+import '../config/app_config.dart';
 
 final axonPeakConfigProvider =
     StateNotifierProvider<AxonPeakNotifier, AsyncValue<AxonPeakConfigModel?>>(
@@ -105,10 +106,9 @@ class AxonPeakNotifier
     }
   }
 
-  // Brzycki formula
+  // Brzycki formula via AppConfig
   double _calculate1RM(double weight, int reps) {
-    if (reps == 1) return weight;
-    return weight / (1.0278 - (0.0278 * reps));
+    return AppConfig.calculate1RMBrzycki(weight, reps);
   }
 
   Future<void> initializeMacrocycle({

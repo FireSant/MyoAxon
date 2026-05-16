@@ -166,7 +166,7 @@ class _ProfileGate extends ConsumerWidget {
     final profileState = ref.watch(userProfileProvider);
 
     return profileState.when(
-      data: (profile) => profile == null
+      data: (profile) => profile == null || !profile.isProfileComplete
           ? const CompleteProfileScreen()
           : const MainScreen(),
       loading: () => const Scaffold(

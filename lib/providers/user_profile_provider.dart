@@ -56,8 +56,8 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfileModel?>> {
     }
   }
 
-  Future<void> clearProfile() async {
-    await repository.clearProfile();
+  Future<void> clearProfile({String? uid}) async {
+    await repository.clearProfile(uid: uid);
     state = const AsyncValue.data(null);
   }
 }
@@ -82,8 +82,8 @@ final userProfileProvider =
             () => ref.read(sessionListProvider.notifier).pullFromFirebase());
       } else {
         debugPrint(
-            '� [UserProfileProvider] UID es null -> Limpiando perfil local');
-        notifier.clearProfile();
+            '🚪 [UserProfileProvider] UID es null -> Limpiando perfil local');
+        notifier.clearProfile(uid: previous);
       }
     },
     fireImmediately: true,

@@ -8,6 +8,7 @@ import '../../config/app_theme.dart';
 import '../screens/profile_screen.dart';
 import '../screens/axon_vbt_screen.dart';
 import '../screens/axon_peak_screen.dart';
+import '../../config/app_config.dart';
 
 class AthleteDrawer extends ConsumerWidget {
   const AthleteDrawer({super.key});
@@ -184,6 +185,14 @@ class AthleteDrawer extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 8),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16.0),
+            child: Text(
+              AppConfig.fullVersion,
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
